@@ -503,8 +503,14 @@ class dependency_visitor:
         nilled.dependency = 'constant'
 
     def visit_blockvariable(self, blockvariable):
-        pass
-#
+
+        deps = set([x.dependency for x in blockvariable.variable.get_list()])
+
+        blockvariable.dependency = 'constant'
+        for d in ('nonlinear', 'linear', 'noprobe'):
+            if d in deps:
+                blockvariable.dependency = d
+                break
 # start implementation
 #
 #  <admst:reverse select="/argv|/discipline|/nature"/>
