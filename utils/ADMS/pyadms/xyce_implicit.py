@@ -70,7 +70,7 @@ class dependency_visitor:
             'noise' : lambda v : setattr(v, 'usedinnoise', True),
             'final_step' : lambda v : setattr(v, 'usedinfinal', True),
         }
-        f = partionning_map[self.globalpartitionning] 
+        f = partionning_map[self.globalpartitionning]
         for v in expression.variable.get_list():
             f(v)
 
@@ -98,19 +98,23 @@ class dependency_visitor:
             self.globalaf.probe.extend(variable.probe, True)
             self.globalaf.variable.extend(variable, True)
 
-#    <admst:when test="[datatypename='mapply_unary']">
-#      <admst:apply-templates select="arg1" match="e:dependency"/>
-#      <admst:value-to select="dependency" path="arg1/dependency"/>
-#      <admst:value-to select="[name='minus']/math/value" string="-%(arg1/math/value)"/>
-#    </admst:when>
-#    <admst:when test="[datatypename='mapply_binary']">
-#      <admst:apply-templates select="arg1|arg2" match="e:dependency"/>
+    def visit_mapply_unary(self, unary):
+        arg = unary.args.get_head()
+        arg.visit(self)
+        unary.dependency = args.dependency
+        unary.math = f'-({arg.math})'
+
+    def visit_mapply_binary(self, binary):
+        args = list(binary.args.get_list())
+        for arg in args:
+            arg.visit(self)
+        raise RuntimeError("HERE")
 #      <!--
-#        +:             -:            *:            /:                                                          
-#          c  np l  nl    c  np l  nl   c  np l  nl   c  np nl nl                                                          
-#          np np l  nl    np np l  nl   np np l  nl   np np nl nl                                                          
-#          l  l  l  nl    l  l  l  nl   l  l  nl nl   l  l  nl nl                                                          
-#          nl nl nl nl    nl nl nl nl   nl nl nl nl   nl nl nl nl                                                          
+#        +:             -:            *:            /:
+#          c  np l  nl    c  np l  nl   c  np l  nl   c  np nl nl
+#          np np l  nl    np np l  nl   np np l  nl   np np nl nl
+#          l  l  l  nl    l  l  l  nl   l  l  nl nl   l  l  nl nl
+#          nl nl nl nl    nl nl nl nl   nl nl nl nl   nl nl nl nl
 #      -->
 #      <admst:choose>
 #        <admst:when test="[arg1/dependency='nonlinear' or arg2/dependency='nonlinear']">
@@ -136,11 +140,11 @@ class dependency_visitor:
 #    <admst:when test="[datatypename='mapply_ternary']">
 #      <admst:apply-templates select="arg1|arg2|arg3" match="e:dependency"/>
 #      <!--
-#          ?: - arg1=c -  - arg1!=c -                                                            
-#             c  np l  nl np np l  nl                                                             
-#             np np l  nl np np l  nl                                                             
-#             l  l  l  nl l  l  l  nl                                                             
-#             nl nl nl nl nl nl nl nl                                                             
+#          ?: - arg1=c -  - arg1!=c -
+#             c  np l  nl np np l  nl
+#             np np l  nl np np l  nl
+#             l  l  l  nl l  l  l  nl
+#             nl nl nl nl nl nl nl nl
 #      -->
 #      <admst:choose>
 #        <admst:when test="[arg2/dependency='nonlinear' or arg3/dependency='nonlinear']">
@@ -436,13 +440,13 @@ class dependency_visitor:
 #    </admst:when>
 #    <admst:when test="[datatypename='whileloop']">
 #      <!--
-#        w, logic(D,while.d)            , d=wb.d                                               
-#              c                 !c                           
-#           c  wb,w,!c?(D,wb,!D) D,wb,!D                                                                                        
-#           !c wb                wb                                                                                             
+#        w, logic(D,while.d)            , d=wb.d
+#              c                 !c
+#           c  wb,w,!c?(D,wb,!D) D,wb,!D
+#           !c wb                wb
 #      -->
 #
-#      <!-- This template, like forloop, had broken conditions that can 
+#      <!-- This template, like forloop, had broken conditions that can
 #           possibly cause dependency to be called twice on the block with
 #           the consequence of reversing the block twice and polluting
 #           the datastructure with duplicates.  Let's try to make it less
@@ -476,10 +480,10 @@ class dependency_visitor:
 #      -->
 #      <!--
 #          wl:  w=c          w!=c
-#               c  np l  nl  np np l  nl                                                             
-#               np np l  nl  np np l  nl                                                             
-#               l  l  l  nl  l  l  l  nl                                                             
-#               nl nl nl nl  nl nl nl nl                                                             
+#               c  np l  nl  np np l  nl
+#               np np l  nl  np np l  nl
+#               l  l  l  nl  l  l  l  nl
+#               nl nl nl nl  nl nl nl nl
 #      -->
 #      <admst:choose>
 #        <admst:when test="[whileblock/dependency='nonlinear']">
@@ -535,10 +539,10 @@ class dependency_visitor:
 #      -->
 #      <!--
 #          fl:  f=c          f!=c
-#               c  np l  nl  np np l  nl                                                             
-#               np np l  nl  np np l  nl                                                             
-#               l  l  l  nl  l  l  l  nl                                                             
-#               nl nl nl nl  nl nl nl nl                                                             
+#               c  np l  nl  np np l  nl
+#               np np l  nl  np np l  nl
+#               l  l  l  nl  l  l  l  nl
+#               nl nl nl nl  nl nl nl nl
 #      -->
 #      <admst:choose>
 #        <admst:when test="[forblock/dependency='nonlinear']">
@@ -583,10 +587,10 @@ class dependency_visitor:
 #      </admst:choose>
 #      <!--
 #          cd:  i=c          i!=c
-#               c  np l  nl  np np l  nl                                                             
-#               np np l  nl  np np l  nl                                                             
-#               l  l  l  nl  l  l  l  nl                                                             
-#               nl nl nl nl  nl nl nl nl                                                             
+#               c  np l  nl  np np l  nl
+#               np np l  nl  np np l  nl
+#               l  l  l  nl  l  l  l  nl
+#               nl nl nl nl  nl nl nl nl
 #      -->
 #      <admst:choose>
 #        <admst:when test="[then/dependency='nonlinear' or else/dependency='nonlinear']">
@@ -667,7 +671,7 @@ class dependency_visitor:
 #        <admst:otherwise>
 #          <admst:value-to select="$lhs/(.|prototype)/dependency" string="constant"/>
 #        </admst:otherwise>
-#      </admst:choose>      
+#      </admst:choose>
 #      <admst:push into="$lhs/probe" select="rhs/probe" onduplicate="ignore"/>
 #    </admst:when>
 #    <admst:when test="[datatypename='block']">
@@ -750,7 +754,7 @@ class dependency_visitor:
 #      <admst:value-to select="[name='ask' and value='yes']/../output" string="yes"/>
 #      <admst:value-to select="[name='ask' and value='no']/../output" string="no"/>
 #      <!-- set output flag if desc or units attribute and we are a module-
-#            scoped variable,  not an input parameter, and have 
+#            scoped variable,  not an input parameter, and have
 #            desc or units attribute, per Verilog-A LRM 2.4, section 3.2.1 -->
 #      <admst:if test="[../input!='yes' and ../module/name=../block/name and name='desc' and value!='']">
 #          <admst:value-to select="../output" string="yes"/>

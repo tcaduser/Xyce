@@ -37,6 +37,9 @@ class admst_reference_list:
     def size(self):
         return len(self.reference_list)
 
+    def get_head(self):
+        return admst.all_data[self.reference_list[0]]
+
 class admst:
     all_data = None
     module_ = None
