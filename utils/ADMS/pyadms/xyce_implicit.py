@@ -88,18 +88,16 @@ class dependency_visitor:
         array.visit(array.variable)
         array.dependency = array.variable().dependency
 
-#    <admst:when test="[datatypename='variable']">
-#      <admst:push into="$globalexpression/probe" select="probe" onduplicate="ignore"/>
-#      <admst:push into="$globalexpression/variable" select="." onduplicate="ignore"/>
-#      <admst:push into="$globaltreenode/@variable" select="." onduplicate="ignore"/>
-#      <admst:value-to select="dependency" path="prototype/dependency"/>
-#
-#      <admst:if test="[$globalhandleafoutputs='yes']">
-#        <admst:push into="$globalaf/@probe" select="probe" onduplicate="ignore"/>
-#        <admst:push into="$globalaf/@variable" select="." onduplicate="ignore"/>
-#      </admst:if>
-#
-#    </admst:when>
+    def visit_variable(self, variable):
+        self.globalexpression.probe.extend(variable.probe, True)
+        self.globalexpression.variable.extend(variable, True)
+        self.globaltreenode.variable.append(variable, True)
+        variable.dependency = variable.prototype().dependency
+
+        if self.globalhandleafoutputs:
+            self.globalaf.probe.extend(variable.probe, True)
+            self.globalaf.variable.extend(variable, True)
+
 #    <admst:when test="[datatypename='mapply_unary']">
 #      <admst:apply-templates select="arg1" match="e:dependency"/>
 #      <admst:value-to select="dependency" path="arg1/dependency"/>
