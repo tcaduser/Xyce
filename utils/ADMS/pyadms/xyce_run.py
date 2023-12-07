@@ -10,4 +10,5 @@ import pyadms.xyceVersion as xyceVersion
 xyceVersion.run()
 print(admst.get_simulator().__dict__)
 
-
+import pyadms.xyceBasicTemplates as xyceBasicTemplates 
+xyceBasicTemplates.BasicData().run()

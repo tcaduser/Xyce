@@ -23,6 +23,9 @@ class admst_reference_list:
         for x in self.reference_list:
             yield admst.all_data[x]
 
+    def size(self):
+        return len(self.reference_list)
+
 class admst:
     all_data = None
     module_ = None
@@ -181,6 +184,7 @@ class attribute(admst):
 class module(admst):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.move_up_parameter('name')
         for x in [
             "analog",
             "node",
