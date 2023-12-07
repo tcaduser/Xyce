@@ -84,11 +84,10 @@ class dependency_visitor:
         if self.globalhandleafoutputs:
             self.globalaf.probe.append(probe.id, True)
 
+    def visit_array(self, array):
+        array.visit(array.variable)
+        array.dependency = array.variable().dependency
 
-#    <admst:when test="[datatypename='array']">
-#      <admst:apply-templates select="variable" match="e:dependency"/>
-#      <admst:value-to select="dependency" path="variable/dependency"/>
-#    </admst:when>
 #    <admst:when test="[datatypename='variable']">
 #      <admst:push into="$globalexpression/probe" select="probe" onduplicate="ignore"/>
 #      <admst:push into="$globalexpression/variable" select="." onduplicate="ignore"/>
