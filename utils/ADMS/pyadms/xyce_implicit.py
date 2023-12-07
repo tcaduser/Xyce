@@ -63,7 +63,7 @@ class dependency_visitor:
 
 
         partitionning_map = {
-            'None' : lambda v : setattr(v, 'usedinevaluate', True),
+            None : lambda v : setattr(v, 'usedinevaluate', True),
             'initial_model' : lambda v : setattr(v, 'usedinmodel', True),
             'initial_instance' : lambda v : setattr(v, 'usedininstance', True),
             'initial_step' : lambda v : setattr(v, 'usedininitial_step', True),
@@ -108,7 +108,6 @@ class dependency_visitor:
         args = list(binary.args.get_list())
         for arg in args:
             arg.visit(self)
-        raise RuntimeError("HERE")
 #      <!--
 #        +:             -:            *:            /:
 #          c  np l  nl    c  np l  nl   c  np l  nl   c  np nl nl
@@ -116,27 +115,18 @@ class dependency_visitor:
 #          l  l  l  nl    l  l  l  nl   l  l  nl nl   l  l  nl nl
 #          nl nl nl nl    nl nl nl nl   nl nl nl nl   nl nl nl nl
 #      -->
-#      <admst:choose>
-#        <admst:when test="[arg1/dependency='nonlinear' or arg2/dependency='nonlinear']">
-#          <admst:value-to select="dependency" string="nonlinear"/>
-#        </admst:when>
-#        <admst:when test="[name='multtime' and (arg1|arg2)/dependency=('linear'|'linear')]">
-#          <admst:value-to select="dependency" string="nonlinear"/>
-#        </admst:when>
-#        <admst:when test="[name='multdiv' and arg2/dependency='linear']">
-#          <admst:value-to select="dependency" string="nonlinear"/>
-#        </admst:when>
-#        <admst:when test="[arg1/dependency='linear' or arg2/dependency='linear']">
-#          <admst:value-to select="dependency" string="linear"/>
-#        </admst:when>
-#        <admst:when test="[arg1/dependency='noprobe' or arg2/dependency='noprobe']">
-#          <admst:value-to select="dependency" string="noprobe"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:value-to select="dependency" string="constant"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
+        deps = [x.dependency for x in args]
+        if binary.name == 'multdiv' and  deps[1] == 'linear':
+            binary.dependency = 'nonlinear'
+        elif 'nonlinear' in deps:
+            binary.dependency = 'nonlinear'
+        elif 'linear' in deps:
+            binary.dependency = 'nonlinear'
+        elif 'noprobe' in deps:
+            binary.dependency = 'noprobe'
+        else:
+            binary.dependency = 'constant'
+
 #    <admst:when test="[datatypename='mapply_ternary']">
 #      <admst:apply-templates select="arg1|arg2|arg3" match="e:dependency"/>
 #      <!--
