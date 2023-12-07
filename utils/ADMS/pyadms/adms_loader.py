@@ -26,6 +26,7 @@ class admst_reference_list:
 class admst:
     all_data = None
     module_ = None
+    simulator_ = None
 
     def __init__(self, **kwargs):
         for x in ['datatypename', 'id', 'uid', 'attributes', 'parameters', 'references']:
@@ -35,6 +36,9 @@ class admst:
 
     def get_module():
         return admst.all_data[admst.module_]
+
+    def get_simulator():
+        return admst.all_data[admst.simulator_]
 
     def move_up_parameter(self, kw):
         self.__dict__[kw] = self.parameters.pop(kw)
@@ -349,6 +353,11 @@ def load_json(fname):
         if dtname == 'module':
             if admst.module_ == None:
                 admst.module_ = x['id']
+            else:
+                raise RuntimeError("Expecting only 1 module")
+        elif dtname == 'simulator':
+            if admst.simulator_ == None:
+                admst.simulator_ = x['id']
             else:
                 raise RuntimeError("Expecting only 1 module")
 
