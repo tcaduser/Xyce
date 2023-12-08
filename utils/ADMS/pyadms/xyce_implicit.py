@@ -129,13 +129,6 @@ class dependency_visitor:
         args = list(binary.args.get_list())
         for arg in args:
             arg.visit(self)
-#      <!--
-#        +:             -:            *:            /:
-#          c  np l  nl    c  np l  nl   c  np l  nl   c  np nl nl
-#          np np l  nl    np np l  nl   np np l  nl   np np nl nl
-#          l  l  l  nl    l  l  l  nl   l  l  nl nl   l  l  nl nl
-#          nl nl nl nl    nl nl nl nl   nl nl nl nl   nl nl nl nl
-#      -->
         deps = [x.dependency for x in args]
         if binary.name == 'multdiv' and  deps[1] == 'linear':
             binary.dependency = 'nonlinear'
@@ -152,13 +145,6 @@ class dependency_visitor:
         args = list(ternary.args.get_list())
         for arg in args:
             arg.visit(self)
-#      <!--
-#          ?: - arg1=c -  - arg1!=c -
-#             c  np l  nl np np l  nl
-#             np np l  nl np np l  nl
-#             l  l  l  nl l  l  l  nl
-#             nl nl nl nl nl nl nl nl
-#      -->
         if 'nonlinear' in deps[1:]:
             ternary.dependency = 'nonlinear'
         elif 'linear' in deps[1:]:
@@ -175,9 +161,6 @@ class dependency_visitor:
             self.globalassignment.lhs().derivate = True
             arg1 = function.arguments.get_item(0)
             arg1.visit(self)
-#          <!-- recursively push a ddxprobe into argument 1-->
-#          <!-- call with argument 1 in select, set $theDDXProbeToPush to -->
-#          <!-- the PATH to thing to push in -->
 
             def create_ddxprobe(arg):
                 if arg.hasattr('ddxprobe'):
@@ -290,7 +273,6 @@ class dependency_visitor:
             self.globalexpression.hasVoltageDependentFunction = True
 
         function.subexpression = self.globalexpression
-#      <!-- fixme: these flags should be set after all contribs are transformed to ...<+F(...); canonical form -->
         if name == 'ddt':
             self.globalcontribution.fixmedynamic = True
         elif name == 'white_noise':
@@ -375,46 +357,28 @@ class dependency_visitor:
         callfunction.dependency = callfunction.function().dependency
 #
     def visit_whileloop(self, whileloop):
-#    <admst:when test="[datatypename='whileloop']">
-#      <!--
-#        w, logic(D,while.d)            , d=wb.d
-#              c                 !c
-#           c  wb,w,!c?(D,wb,!D) D,wb,!D
-#           !c wb                wb
-#      -->
         While = whileloop.While()
+        whileblock = whileloop.whileblock()
         While.visit(self)
         if self.globalopdependent or While.dependency == 'constant':
-            whileloop.whileblock().visit(self)
+            whileblock.visit(self)
         if not self.globalopdependent:
             if While.dependency == 'constant':
                 whileloop.While.visit(self)
             if While.dependency != 'constant':
                 self.globalopdependent = True
-                whileloop.whileblock().visit(self)
+                whileblock.visit(self)
                 self.globalopdependent = False
-#      <!--
-#          wl:  w=c          w!=c
-#               c  np l  nl  np np l  nl
-#               np np l  nl  np np l  nl
-#               l  l  l  nl  l  l  l  nl
-#               nl nl nl nl  nl nl nl nl
-#      -->
-#      <admst:choose>
-#        <admst:when test="[whileblock/dependency='nonlinear']">
-#          <admst:value-to select="dependency" string="nonlinear"/>
-#        </admst:when>
-#        <admst:when test="[whileblock/dependency='linear']">
-#          <admst:value-to select="dependency" string="linear"/>
-#        </admst:when>
-#        <admst:when test="[while/dependency!='constant' or whileblock/dependency='noprobe']">
-#          <admst:value-to select="dependency" string="noprobe"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:value-to select="dependency" string="constant"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
+
+        if whileblock.dependency == 'nonlinear':
+            whileloop.dependency = 'nonlinear'
+        elif whileblock.dependency == 'linear':
+            whileloop.dependency = 'linear'
+        elif (While.dependency != 'constant') or (whileblock.dependency == 'noprobe'):
+            whileloop.dependency = 'noprobe'
+        else:
+            whileloop.dependency = 'constant'
+
 #    <admst:when test="[datatypename='forloop']">
 #      <!-- Xyce:  The original code for this had broken conditionals that
 #           could, in some cases, allow dependency to be called twice on
