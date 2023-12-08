@@ -269,12 +269,16 @@ class dependency_visitor:
             self.globalexpression.hasVoltageDependentFunction = True
 
         function.subexpression = self.globalexpression
-#      <admst:value-to select="subexpression/expression" path="$globalexpression"/>
 #      <!-- fixme: these flags should be set after all contribs are transformed to ...<+F(...); canonical form -->
-#      <admst:value-to test="[name='ddt']" select="$globalcontribution/#fixmedynamic" path="1"/>
-#      <admst:value-to test="[name='white_noise']" select="$globalcontribution/#fixmewhitenoise" path="1"/>
-#      <admst:value-to test="[name='flicker_noise']" select="$globalcontribution/#fixmeflickernoise" path="1"/>
-#      <admst:value-to test="[name='\$temperature']" select="$globalassignment/lhs/TemperatureDependent" string="yes"/>
+        if name = 'ddt':
+            self.globalcontribution.fixmedynamic = True
+        elif name == 'white_noise':
+            self.globalcontribution.fixmewhitenoise = True
+        elif name == 'flicker_noise':
+            self.globalcontribution.fixmeflickernoise = True
+        elif name == '$temperature':
+            self.globalassignment.lhs().TemperatureDependent = True
+
 #      <admst:choose>
 #        <admst:when
 #          test="[
