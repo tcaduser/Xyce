@@ -50,6 +50,27 @@ class dependency_visitor:
         self.globalaf = None
         self.theDDXProbeToPush = None
 
+    scalingunits = {
+      '1' : '',
+      'E' : 'e+18',
+      'P' : 'e+15',
+      'T' : 'e+12',
+      'G' : 'e+9',
+      'M' : 'e+6',
+      'k' : 'e+3',
+      'h' : 'e+2',
+      'D' : 'e+1',
+      'd' : 'e-1',
+      'c' : 'e-2',
+      'm' : 'e-3',
+      'u' : 'e-6',
+      'n' : 'e-9',
+      'A' : 'e-10',
+      'p' : 'e-12',
+      'f' : 'e-15',
+      'a' : 'e-18',
+    }
+
     def visit_expression(self, expression):
         self.globalexpression = expression
         expression.probe = expression.create_reference_list()
@@ -270,7 +291,7 @@ class dependency_visitor:
 
         function.subexpression = self.globalexpression
 #      <!-- fixme: these flags should be set after all contribs are transformed to ...<+F(...); canonical form -->
-        if name = 'ddt':
+        if name == 'ddt':
             self.globalcontribution.fixmedynamic = True
         elif name == 'white_noise':
             self.globalcontribution.fixmewhitenoise = True
@@ -334,86 +355,17 @@ class dependency_visitor:
             self.globalexpression.function.append(function)
         elif name == 'transition':
             self.globalexpression.function.append(function)
-        else if no hasattr(function, 'definition'):
+        elif not hasattr(function, 'definition'):
             raise RuntimeError(f'analog function {name} is undefined')
         self.globalexpression = None
 
-#    <admst:when test="[datatypename='number']">
-#      <admst:choose>
-#        <admst:when test="[scalingunit='1']">
-#          <admst:value-to select="math/value" path="value"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='E']">
-#          <admst:warning format="%(lexval/(f|':'|l|':'|c)): non-standard scale factor: %(scalingunit)\n"/>
-#          <admst:value-to select="math/value" string="%(value)e+18"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='P']">
-#          <admst:warning format="%(lexval/(f|':'|l|':'|c)): non-standard scale factor: %(scalingunit)\n"/>
-#          <admst:value-to select="math/value" string="%(value)e+15"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='T']">
-#          <admst:value-to select="math/value" string="%(value)e+12"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='G']">
-#          <admst:value-to select="math/value" string="%(value)e+9"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='M']">
-#          <admst:value-to select="math/value" string="%(value)e+6"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='K']">
-#          <admst:value-to select="math/value" string="%(value)e+3"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='k']">
-#          <admst:value-to select="math/value" string="%(value)e+3"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='h']">
-#          <admst:value-to select="math/value" string="%(value)e+2"/>
-#          <admst:warning format="%(lexval/(f|':'|l|':'|c)): non-standard scale factor: %(scalingunit)\n"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='D']">
-#          <admst:value-to select="math/value" string="%(value)e+1"/>
-#          <admst:warning format="%(lexval/(f|':'|l|':'|c)): non-standard scale factor: %(scalingunit)\n"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='d']">
-#          <admst:warning format="%(lexval/(f|':'|l|':'|c)): non-standard scale factor: %(scalingunit)\n"/>
-#          <admst:value-to select="math/value" string="%(value)e-1"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='c']">
-#          <admst:value-to select="math/value" string="%(value)e-2"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='m']">
-#          <admst:value-to select="math/value" string="%(value)e-3"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='u']">
-#          <admst:value-to select="math/value" string="%(value)e-6"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='n']">
-#          <admst:value-to select="math/value" string="%(value)e-9"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='A']">
-#          <admst:warning format="%(lexval/(f|':'|l|':'|c)): non-standard scale factor: %(scalingunit)\n"/>
-#          <admst:value-to select="math/value" string="%(value)e-10"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='p']">
-#          <admst:value-to select="math/value" string="%(value)e-12"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='f']">
-#          <admst:value-to select="math/value" string="%(value)e-15"/>
-#        </admst:when>
-#        <admst:when test="[scalingunit='a']">
-#          <admst:value-to select="math/value" string="%(value)e-18"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:error format="%(lexval/(f|':'|l|':'|c)): unit not supported: %(scalingunit)\n"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
-#    <admst:when test="[datatypename='string']"/>
-#    <admst:otherwise>
-#      <admst:fatal format="%(datatypename): case not handled\n"/>
-#    </admst:otherwise>
-#  </admst:choose>
-#</admst:template>
+    def visit_number(self, number):
+        number.dependency = 'constant'
+        scalingunit = self.scalingunits[number.scalingunit]
+        number.value = number.lexval().string + scalingunit
+
+    def visit_string(self, string):
+        string.dependency = 'constant'
 
 #above is expression dependency
 

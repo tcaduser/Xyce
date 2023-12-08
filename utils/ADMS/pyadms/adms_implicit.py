@@ -16,6 +16,7 @@ class dependency_visitor:
       'T' : 'e+12',
       'G' : 'e+9',
       'M' : 'e+6',
+      'K' : 'e+3',
       'k' : 'e+3',
       'h' : 'e+2',
       'D' : 'e+1',
