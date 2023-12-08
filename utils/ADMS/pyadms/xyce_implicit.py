@@ -127,8 +127,10 @@ class dependency_visitor:
         else:
             binary.dependency = 'constant'
 
-#    <admst:when test="[datatypename='mapply_ternary']">
-#      <admst:apply-templates select="arg1|arg2|arg3" match="e:dependency"/>
+    def visit_mapply_ternary(self, ternary):
+        args = list(ternary.args.get_list())
+        for arg in args:
+            arg.visit(self)
 #      <!--
 #          ?: - arg1=c -  - arg1!=c -
 #             c  np l  nl np np l  nl
@@ -136,149 +138,137 @@ class dependency_visitor:
 #             l  l  l  nl l  l  l  nl
 #             nl nl nl nl nl nl nl nl
 #      -->
-#      <admst:choose>
-#        <admst:when test="[arg2/dependency='nonlinear' or arg3/dependency='nonlinear']">
-#          <admst:value-to select="dependency" string="nonlinear"/>
-#        </admst:when>
-#        <admst:when test="[arg2/dependency='linear' or arg3/dependency='linear']">
-#          <admst:value-to select="dependency" string="linear"/>
-#        </admst:when>
-#        <admst:when test="[arg1/dependency!='constant' or arg2/dependency='noprobe' or arg3/dependency='noprobe']">
-#          <admst:value-to select="dependency" string="noprobe"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:value-to select="dependency" string="constant"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
-#    <admst:when test="[datatypename='function']">
-#      <admst:choose>
-#        <admst:when test="[name='ddx' or name='\$ddx' or name='\$derivate']">
-#          <admst:value-to select="$globalassignment/lhs/derivate" string="yes"/>
-#          <admst:apply-templates select="arguments[1]" match="e:dependency"/>
+        if 'nonlinear' in deps[1:]:
+            ternary.dependency = 'nonlinear'
+        elif 'linear' in deps[1:]:
+            ternary.dependency = 'linear'
+        elif 'constant' != deps[0] or 'noprobe' in args[1:]:
+            ternary.dependency = 'noprobe'
+        else:
+            ternary.dependency = 'constant'
+
+    def visit_function(self, function):
+        function.name = function.lexval().string
+        name = function.name
+        if name in ('ddx', '$ddx', '$derivate',):
+            self.globalassignment.lhs().derivate = True
+            arg1 = function.arguments.get_item(0)
+            arg1.visit(self)
 #          <!-- recursively push a ddxprobe into argument 1-->
 #          <!-- call with argument 1 in select, set $theDDXProbeToPush to -->
 #          <!-- the PATH to thing to push in -->
-#          <admst:template match="pushDDXintoArg">
-#            <admst:choose>
-#              <admst:when test="[adms/datatypename='variable']">
-#                <admst:push into="ddxprobe" select="$theDDXProbeToPush"/>
-#              </admst:when>
-#              <admst:when test="[adms/datatypename='expression']">
-#                <admst:push into="variable/ddxprobe" select="$theDDXProbeToPush"/>
-#              </admst:when>
-#              <admst:when test="[adms/datatypename='mapply_binary']">
-#                <admst:apply-templates match="pushDDXintoArg" select="arg1"/>
-#                <admst:apply-templates match="pushDDXintoArg" select="arg2"/>
-#              </admst:when>
-#              <admst:when test="[adms/datatypename='mapply_ternary']">
-#                <admst:apply-templates match="pushDDXintoArg" select="arg2"/>
-#                <admst:apply-templates match="pushDDXintoArg" select="arg3"/>
-#              </admst:when>
-#              <admst:when test="[adms/datatypename='constant' or adms/datatypename='number']">
-#              </admst:when>
-#              <admst:otherwise>
-#                <admst:fatal format="Xyce/ADMS got a ddx expression %(.) of type %(adms/datatypename) and cannot proceed.  We currently support only mapply_binary, mapply_ternary and variable.\n"/>
-#              </admst:otherwise>
-#            </admst:choose>
-#          </admst:template>
-#          <!-- <admst:push into="$globalexpression/variable/ddxprobe" select="arguments[2]" onduplicate="ignore"/> -->
-#          <admst:variable name="theDDXProbeToPush" select="%(arguments[2])"/>
-#          <admst:apply-templates match="pushDDXintoArg" select="arguments[1]"/>
-#          <admst:choose>
-#            <admst:when test="arguments[1]/dependency[.='constant' or .='noprobe']">
-#              <admst:value-to select="dependency" path="arguments[1]/dependency"/>
-#            </admst:when>
-#            <admst:otherwise>
-#              <admst:value-to select="dependency" string="nonlinear"/>
-#            </admst:otherwise>
-#          </admst:choose>
-#        </admst:when>
-#        <admst:when test="[name='\$port_connected']">
-#          <admst:value-to select="dependency" string="constant"/>
-#          <admst:assert test="[arguments[1]/datatypename='node']" format="Argument %(arguments[1]) to port_connected is not a node\n"/>
-#          <admst:variable name="nodename" value="%(arguments[1]/name)"/>
-#          <admst:push into="arguments[1]/module/@optnodes" select="arguments[1]" onduplicate="ignore"/>
-#          <admst:value-to select="arguments[1]/module/node[name=$nodename]/#optional" value="yes"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <!-- track dependencies of analog function output arguments -->
-#          <admst:variable name="function" select="%(.)"/>
-#          <admst:if test="[definition/datatypename='analogfunction']">
-#            <admst:if test="[exists(definition/variable[(output='yes') and (name!=$function/name)])]">
-#              <admst:variable name="globalhandleafoutputs" string="yes"/>
-#              <admst:variable name="globalaf" path="."/>
-#            </admst:if>
-#          </admst:if>
-#          <!-- process arguments normally -->
-#          <admst:apply-templates select="arguments" match="e:dependency"/>
-#          <!-- propagate dependencies into output arguments -->
-#          <admst:if test="[$globalhandleafoutputs='yes']">
-#            <admst:variable name="globalhandleafoutputs" string="no"/>
-#            <admst:variable name="globalaf"/>
-#            <admst:for-each select="definition/variable">
-#              <admst:if test="[(output='yes') and (name!=$function/name)]">
-#                <admst:variable name="position" select="%(position(.)-1)"/>
-#                <admst:fatal test="[$function/arguments[position(.)=$position]/datatypename!='variable']"
-#                             format="%(function/name) output arg $position is %(.), must be a variable\n"/>
-#                <admst:push into="$function/arguments[position(.)=$position]/probe" select="$function/@probe" onduplicate="ignore"/>
-#                <admst:push into="$function/arguments[position(.)=$position]/variable" select="$function/@variable" onduplicate="ignore"/>
-#                <admst:choose>
-#                  <admst:when test="$function/arguments/dependency[.='linear' or .='nonlinear']">
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/dependency" string="nonlinear"/>
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/prototype/dependency" string="nonlinear"/>
-#                  </admst:when>
-#                  <admst:when test="$function/arguments/dependency[.='noprobe']">
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/dependency" string="noprobe"/>
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/prototype/dependency" string="noprobe"/>
-#                  </admst:when>
-#                  <admst:otherwise>
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/dependency" string="constant"/>
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/prototype/dependency" string="constant"/>
-#                  </admst:otherwise>
-#                </admst:choose>
-#                <admst:choose>
-#                  <admst:when test="[$globalpartitionning='initial_model']">
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/setinmodel" string="yes"/>
-#                  </admst:when>
-#                  <admst:when test="[$globalpartitionning='initial_instance']">
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/setininstance" string="yes"/>
-#                  </admst:when>
-#                  <admst:when test="[$globalpartitionning='initial_step']">
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/setininitial_step" string="yes"/>
-#                  </admst:when>
-#                  <admst:when test="[$globalpartitionning='noise']">
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/setinnoise" string="yes"/>
-#                  </admst:when>
-#                  <admst:when test="[$globalpartitionning='final_step']">
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/setinfinal" string="yes"/>
-#                  </admst:when>
-#                  <admst:otherwise>
-#                    <admst:value-to select="$function/arguments[position(.)=$position]/setinevaluate" string="yes"/>
-#                  </admst:otherwise>
-#                </admst:choose>
-#              </admst:if>
-#            </admst:for-each>
-#            <admst:value-to select="$function/@probe"/>
-#            <admst:value-to select="$function/@variable"/>
-#          </admst:if>
-#          <admst:choose>
-#            <admst:when test="[(name='ddt' or name='\$ddt')or(name='idt' or name='\$idt')]">
-#              <admst:value-to select="dependency" string="nonlinear"/>
-#            </admst:when>
-#            <admst:when test="arguments/dependency[.='linear' or .='nonlinear']">
-#              <admst:value-to select="dependency" string="nonlinear"/>
-#            </admst:when>
-#            <admst:when test="arguments/dependency[.='noprobe']">
-#              <admst:value-to select="dependency" string="noprobe"/>
-#            </admst:when>
-#            <admst:otherwise>
-#              <admst:value-to select="dependency" string="constant"/>
-#            </admst:otherwise>
-#          </admst:choose>
-#        </admst:otherwise>
-#      </admst:choose>
-#      <admst:value-to test="dependency[.='linear' or .='nonlinear']" select="$globalexpression/hasVoltageDependentFunction" string="yes"/>
+
+            def create_ddxprobe(arg):
+                if arg.hasattr('ddxprobe'):
+                    raise RuntimeError("Unexpected")
+                else:
+                    arg.ddxprobe = arg.create_reference_list()
+
+            def pushDDXintoArg(x, theDDXProbeToPush):
+                if x.datatypename == 'variable':
+                    create_ddxprobe(x)
+                    x.ddxprobe.append(theDDXProbeToPush)
+                elif x.datatypename == 'expression':
+                    create_ddxprobe(x.variable())
+                    x.variable().ddxprobe.append(theDDXProbeToPush)
+                elif x.datatypename == 'mapply_binary':
+                    pushDDXintoArg(x.args.get_item(0))
+                    pushDDXintoArg(x.args.get_item(1))
+                elif x.datatypename == 'mapply_ternary':
+                    pushDDXintoArg(x.args.get_item(1))
+                    pushDDXintoArg(x.args.get_item(2))
+                elif x.datatypename in ('constant', 'number',):
+                    pass
+                else:
+                    raise RuntimeError(f"Xyce/ADMS got a ddx expression {x.uid} of type {x.datatypename} and cannot proceed.  We currently support only mapply_binary, mapply_ternary and variable.")
+            arg2 = function.arguments.get_item(1)
+            pushDDXintoArg(arg1, arg2)
+            if arg1.dependency in ('constant', 'noprobe'):
+                function.dependency = arg1.dependency
+            else:
+                function.dependency = 'nonlinear'
+        elif name == '$port_connected':
+            function.dependency = 'constant'
+            arg1 = function.arguments.get_item(0)
+            if arg1.datatypename != 'node':
+                raise RuntimeError(f"Argument {arg1.uid} to $port_connected is not a node")
+            else:
+                nodename = arg1.name
+                module = arg1.get_module()
+                if not hasattr(module, 'optnodes'):
+                    module.optnodes = module.create_reference_list()
+                    module.optnodes.append(arg1, True)
+            arg1.optional = True
+        else:
+            #
+            # Analog functions
+            #
+            definition = function.definition()
+            if (definition is not None) and (definition.datatypename == 'analogfunction'):
+               for v in definition.variable.get_list():
+                    if variable.output and variable.name == function.name:
+                        self.globalhandleafoutputs = True
+                        self.globalaf = function
+
+            #
+            # process arg dependencies
+            #
+            for arg in function.arguments.get_list():
+                arg.visit(self)
+
+            deps = [x.dependency for x in function.arguments.get_list()]
+
+            if self.globalhandleafoutputs:
+                self.globalhandleafoutputs = False
+                self.globalaf = None
+
+                if ('linear' in deps) or ('nonlinear' in deps):
+                    dependency = 'nonlinear'
+                elif 'noprobe' in deps:
+                    dependency = 'noprobe'
+                elif 'constant' in deps:
+                    dependency = 'constant'
+
+                for position, dv in enumerate(definition.variable.get_list()):
+                    if not (dv.output and dv.name != function.name):
+                        continue
+                    elif dv.datatypename != 'variable':
+                        raise RuntimeError(f"{function.name} output arg {position} is {dv.datatypename}, must be a variable")
+
+                    # propagating probes and variables to output
+                    dv.probe.extend(function.probe)
+                    dv.variable.extend(function.variable)
+                    dv.dependency = dependency
+                    dv.prototype().dependency = dependency
+
+                    if self.globalpartitioning == 'initial_model':
+                        dv.setinmodel = True
+                    elif self.globalpartitioning == 'initial_instance':
+                        dv.setininstance = True
+                    elif self.globalpartitioning == 'initial_step':
+                        dv.setininitial_step = True
+                    elif self.globalpartitioning == 'noise':
+                        dv.setinnoise = True
+                    elif self.globalpartitioning == 'final_step':
+                        dv.setinfinal = True
+                    else:
+                        dv.setinevaluate = True
+
+            function.probe = None
+            function.variable = None
+
+            if name in ('ddt', '$ddt', 'idt', '$idt',):
+                function.dependency = 'nonlinear'
+            elif ('linear' in deps) or ('nonlinear' in deps):
+                function.dependency = 'nonlinear'
+            elif 'noprobe' in deps:
+                function.dependency = 'noprobe'
+            else:
+                function.dependency = 'constant'
+        if function.dependency in ('linear', 'nonlinear'):
+            self.globalexpression.hasVoltageDependentFunction = True
+
+        function.subexpression = self.globalexpression
 #      <admst:value-to select="subexpression/expression" path="$globalexpression"/>
 #      <!-- fixme: these flags should be set after all contribs are transformed to ...<+F(...); canonical form -->
 #      <admst:value-to test="[name='ddt']" select="$globalcontribution/#fixmedynamic" path="1"/>
@@ -455,19 +445,6 @@ class dependency_visitor:
 #        </admst:otherwise>
 #      </admst:choose>
 #
-#      <!-- Original -->
-#      <!--
-#      <admst:apply-templates select="while" match="e:dependency"/>
-#      <admst:apply-templates select="[$globalopdependent='yes' or while/dependency='constant']/whileblock" match="dependency"/>
-#      <admst:if test="[$globalopdependent='no']">
-#        <admst:apply-templates select="while[dependency='constant']" match="e:dependency"/>
-#        <admst:if test="[while/dependency!='constant']">
-#          <admst:variable name="globalopdependent" string="yes"/>
-#          <admst:apply-templates select="whileblock" match="dependency"/>
-#          <admst:variable name="globalopdependent" string="no"/>
-#        </admst:if>
-#      </admst:if>
-#      -->
 #      <!--
 #          wl:  w=c          w!=c
 #               c  np l  nl  np np l  nl

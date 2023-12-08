@@ -249,6 +249,7 @@ class dependency_visitor:
                 self.globalexpression.hasVoltageDependentFunction = True
             else:
                 self.globalexpression.hasVoltageDependentFunction = False
+
 #      <admst:value-to select="subexpression/expression" path="$globalexpression"/>
 #      <!-- fixme: these flags should be set after all contribs are transformed to ...<+F(...); canonical form -->
 #      <admst:value-to test="[name='ddt']" select="$globalcontribution/#fixmedynamic" path="1"/>
