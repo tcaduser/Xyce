@@ -279,66 +279,65 @@ class dependency_visitor:
         elif name == '$temperature':
             self.globalassignment.lhs().TemperatureDependent = True
 
-#      <admst:choose>
-#        <admst:when
-#          test="[
-#          name='\$abstime' or
-#          name='\$realtime' or
-#          name='\$temperature' or
-#          name='\$vt' or
-#          name='idt' or
-#          name='ddt' or
-#          name='\$param_given' or
-#          name='\$port_connected' or
-#          name='\$given' or
-#          name='ddx' or
-#          name='flicker_noise' or
-#          name='white_noise'
-#          ]">
-#        </admst:when>
-#
+        if name in (
+            '$abstime',
+            '$realtime',
+            '$temperature',
+            '$vt',
+            'idt',
+            'ddt',
+            '$param_given',
+            '$port_connected',
+            '$given',
+            'ddx',
+            'flicker_noise',
+            'white_noise',
+        ):
+            pass
 #        <!-- Table 4-14 - Standard Functions -->
 #        <!-- Table 4-15 - Trigonometric and Hyperbolic Functions-->
-#        <admst:when
-#          test="[name='analysis' or name='\$analysis' or name='\$simparam' or name='simparam' or
-#          name='\$shrinka' or name='\$shrinkl' or name='\$limexp' or name='limexp' or name='\$limit' or
-#          name='ln' or
-#          name='log' or
-#          name='exp' or
-#          name='sqrt' or
-#          name='min' or
-#          name='max' or
-#          name='abs' or
-#          name='pow' or
-#          name='floor' or
-#          name='ceil' or
-#          name='sin' or
-#          name='cos' or
-#          name='tan' or
-#          name='asin' or
-#          name='acos' or
-#          name='atan' or
-#          name='atan2' or
-#          name='hypot' or
-#          name='sinh' or
-#          name='cosh' or
-#          name='tanh' or
-#          name='asinh' or
-#          name='acosh' or
-#          name='atanh'
-#          ]">
-#          <admst:push into="$globalexpression/function" select="."/>
-#          <admst:value-to select="class" string="builtin"/>
-#        </admst:when>
-#        <admst:when test="[name='transition']">
-#          <admst:push into="$globalexpression/function" select="."/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:assert test="[exists(definition)]" format="%(lexval/(f|':'|l|':'|c)): analog function '%(name)' is undefined\n"/>
-#          <admst:push into="$globalexpression/function" select="."/>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
+        elif name in (
+            'analysis',
+            '$analysis',
+            '$simparam',
+            'simparam',
+            '$shrinka',
+            '$shrinkl',
+            '$limexp',
+            'limexp',
+            '$limit',
+            'ln',
+            'log',
+            'exp',
+            'sqrt',
+            'min',
+            'max',
+            'abs',
+            'pow',
+            'floor',
+            'ceil',
+            'sin',
+            'cos',
+            'tan',
+            'asin',
+            'acos',
+            'atan',
+            'atan2',
+            'hypot',
+            'sinh',
+            'cosh',
+            'tanh',
+            'asinh',
+            'acosh',
+            'atanh',
+        ):
+            self.globalexpression.function.append(function)
+        elif name == 'transition':
+            self.globalexpression.function.append(function)
+        else if no hasattr(function, 'definition'):
+            raise RuntimeError(f'analog function {name} is undefined')
+        self.globalexpression = None
+
 #    <admst:when test="[datatypename='number']">
 #      <admst:choose>
 #        <admst:when test="[scalingunit='1']">
@@ -415,6 +414,9 @@ class dependency_visitor:
 #    </admst:otherwise>
 #  </admst:choose>
 #</admst:template>
+
+#above is expression dependency
+
 #
 #<admst:template match="dependency">
 #  <admst:choose>
