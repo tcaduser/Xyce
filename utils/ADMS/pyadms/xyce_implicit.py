@@ -369,13 +369,12 @@ class dependency_visitor:
 
 #above is expression dependency
 
+    def visit_callfunction(self, callfunction):
+        for f in callfunction.function().arguments:
+            f.visit(self)
+        callfunction.dependency = callfunction.function().dependency
 #
-#<admst:template match="dependency">
-#  <admst:choose>
-#    <admst:when test="[datatypename='callfunction']">
-#      <admst:apply-templates select="function/arguments" match="e:dependency"/>
-#      <admst:value-to select="dependency" path="function/dependency"/>
-#    </admst:when>
+    def visit_whileloop(self, whileloop):
 #    <admst:when test="[datatypename='whileloop']">
 #      <!--
 #        w, logic(D,while.d)            , d=wb.d
@@ -383,26 +382,17 @@ class dependency_visitor:
 #           c  wb,w,!c?(D,wb,!D) D,wb,!D
 #           !c wb                wb
 #      -->
-#
-#      <!-- This template, like forloop, had broken conditions that can
-#           possibly cause dependency to be called twice on the block with
-#           the consequence of reversing the block twice and polluting
-#           the datastructure with duplicates.  Let's try to make it less
-#           dangerous -->
-#
-#      <admst:apply-templates select="while" match="e:dependency"/>
-#      <admst:choose>
-#        <admst:when test="[$globalopdependent='no']">
-#          <admst:variable name="globalopdependent" string="yes"/>
-#          <admst:apply-templates select="whileblock" match="dependency"/>
-#          <admst:variable name="globalopdependent" string="no"/>
-#          <admst:apply-templates select="while[dependency='constant']" match="e:dependency"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:apply-templates select="whileblock" match="dependency"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#
+        While = whileloop.While()
+        While.visit(self)
+        if self.globalopdependent or While.dependency == 'constant':
+            whileloop.whileblock().visit(self)
+        if not self.globalopdependent:
+            if While.dependency == 'constant':
+                whileloop.While.visit(self)
+            if While.dependency != 'constant':
+                self.globalopdependent = True
+                whileloop.whileblock().visit(self)
+                self.globalopdependent = False
 #      <!--
 #          wl:  w=c          w!=c
 #               c  np l  nl  np np l  nl
@@ -889,13 +879,3 @@ class dependency_visitor:
 #
 #<admst:apply-templates select="." match="adms.implicit.xml"/>
 #
-#<!--admst:sendmail>
-#  <admst:subject>automatic mailing from %(/simulator/fullname)</admst:subject>
-#  <admst:arguments recipient="%(/simulator/fullname)"/>
-#  <admst:to recipient="r29173@freescale.com"/>
-#  <admst:message>
-#  </admst:message>
-#</admst:sendmail-->
-#
-#
-#</admst>
