@@ -379,65 +379,36 @@ class dependency_visitor:
         else:
             whileloop.dependency = 'constant'
 
-#    <admst:when test="[datatypename='forloop']">
+  def visit_forloop(self, forloop):
 #      <!-- Xyce:  The original code for this had broken conditionals that
 #           could, in some cases, allow dependency to be called twice on
 #           the "forblock".  This is catastrophic and should not happen.
 #           Let's try to accomplish the dependency scanning without that
 #           logical hole -->
-#      <admst:apply-templates select="initial|update" match="dependency"/>
-#      <admst:apply-templates select="condition" match="e:dependency"/>
-#      <admst:choose>
-#        <admst:when test="[$globalopdependent='no']">
-#          <admst:variable name="globalopdependent" string="yes"/>
-#          <admst:apply-templates select="forblock" match="dependency"/>
-#          <admst:variable name="globalopdependent" string="no"/>
-#          <admst:apply-templates select="(initial|update)/[dependency='constant']" match="dependency"/>
-#          <admst:apply-templates select="condition[dependency='constant']" match="e:dependency"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:apply-templates select="forblock" match="dependency"/>
-#          <admst:apply-templates select="(initial|update)/[dependency='constant']" match="dependency"/>
-#          <admst:apply-templates select="condition[dependency='constant']" match="e:dependency"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#      <!-- Original code: -->
-#      <!--
-#      <admst:apply-templates select="initial|update" match="dependency"/>
-#      <admst:apply-templates select="condition" match="e:dependency"/>
-#      <admst:apply-templates select="[$globalopdependent='yes' or nilled((initial|condition|update)/[dependency!='constant'])]/forblock" match="dependency"/>
-#      <admst:if test="[$globalopdependent='no']">
-#        <admst:apply-templates select="(initial|update)/[dependency='constant']" match="dependency"/>
-#        <admst:apply-templates select="condition[dependency='constant']" match="e:dependency"/>
-#        <admst:if test="[condition/dependency!='constant' or initial/dependency!='constant' or update/dependency!='constant']">
-#          <admst:variable name="globalopdependent" string="yes"/>
-#          <admst:apply-templates select="forblock" match="dependency"/>
-#          <admst:variable name="globalopdependent" string="no"/>
-#        </admst:if>
-#      </admst:if>
-#      -->
-#      <!--
-#          fl:  f=c          f!=c
-#               c  np l  nl  np np l  nl
-#               np np l  nl  np np l  nl
-#               l  l  l  nl  l  l  l  nl
-#               nl nl nl nl  nl nl nl nl
-#      -->
-#      <admst:choose>
-#        <admst:when test="[forblock/dependency='nonlinear']">
-#          <admst:value-to select="dependency" string="nonlinear"/>
-#        </admst:when>
-#        <admst:when test="[forblock/dependency='linear']">
-#          <admst:value-to select="dependency" string="linear"/>
-#        </admst:when>
-#        <admst:when test="[(condition!='constant' or initial!='constant' or update!='constant') or forblock/dependency='noprobe']">
-#          <admst:value-to select="dependency" string="noprobe"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:value-to select="dependency" string="constant"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
+    for i in(forloop.initial(), forloop.update(), forloop.condition()):
+        i.visit(self)
+    forblock = foorloop.forblock()
+    if not self.globalopdependent:
+        self.globalopdependent = True
+        forblock.visit(self)
+        self.globalopdependent = False
+        for i in(forloop.initial(), forloop.update(), forloop.condition()):
+            if i.dependency == 'constant':
+                i.visit(self)
+    else:
+        forblock.visit(self)
+        for i in(forloop.initial(), forloop.update(), forloop.condition()):
+            if i.dependency == 'constant':
+                i.visit(self)
+        if forblock.dependency == 'nonlinear':
+            forloop.dependency = 'nonlinear'
+        elif forblock.dependency == 'linear':
+            forloop.dependency = 'linear'
+        elif (forloop.condition().dependency != 'constant' or forloop.initial().dependency() != 'constant') or forblock.dependency == 'noprobe':
+            forloop.dependency = 'noprobe'
+        else:
+            forloop.dependency = 'constant'
+
 #    <admst:when test="[datatypename='case']">
 #      <admst:variable name="globaltreenode" path="case"/>
 #      <admst:apply-templates select="case" match="e:dependency"/>
