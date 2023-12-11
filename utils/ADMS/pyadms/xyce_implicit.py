@@ -7,6 +7,7 @@
 #  Copyright (C) 2002-2012 Laurent Lemaitre <r29173@users.sourceforge.net>
 #  Copyright (C) 2015-2016 Guilherme Brondani Torri <guitorri@gmail.com>
 #                2012 Ryan Fox <ryan.fox@upverter.com>
+#  Copyright (C) 2023 Juan Sanchez, DEVSIM LLC (jsanchez@devsim.com)
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -379,198 +380,166 @@ class dependency_visitor:
         else:
             whileloop.dependency = 'constant'
 
-  def visit_forloop(self, forloop):
+    def visit_forloop(self, forloop):
 #      <!-- Xyce:  The original code for this had broken conditionals that
 #           could, in some cases, allow dependency to be called twice on
 #           the "forblock".  This is catastrophic and should not happen.
 #           Let's try to accomplish the dependency scanning without that
 #           logical hole -->
-    for i in(forloop.initial(), forloop.update(), forloop.condition()):
-        i.visit(self)
-    forblock = foorloop.forblock()
-    if not self.globalopdependent:
-        self.globalopdependent = True
-        forblock.visit(self)
-        self.globalopdependent = False
         for i in(forloop.initial(), forloop.update(), forloop.condition()):
-            if i.dependency == 'constant':
-                i.visit(self)
-    else:
-        forblock.visit(self)
-        for i in(forloop.initial(), forloop.update(), forloop.condition()):
-            if i.dependency == 'constant':
-                i.visit(self)
-        if forblock.dependency == 'nonlinear':
-            forloop.dependency = 'nonlinear'
-        elif forblock.dependency == 'linear':
-            forloop.dependency = 'linear'
-        elif (forloop.condition().dependency != 'constant' or forloop.initial().dependency() != 'constant') or forblock.dependency == 'noprobe':
-            forloop.dependency = 'noprobe'
+            i.visit(self)
+        forblock = foorloop.forblock()
+        if not self.globalopdependent:
+            self.globalopdependent = True
+            forblock.visit(self)
+            self.globalopdependent = False
+            for i in(forloop.initial(), forloop.update(), forloop.condition()):
+                if i.dependency == 'constant':
+                    i.visit(self)
         else:
-            forloop.dependency = 'constant'
+            forblock.visit(self)
+            for i in(forloop.initial(), forloop.update(), forloop.condition()):
+                if i.dependency == 'constant':
+                    i.visit(self)
+            if forblock.dependency == 'nonlinear':
+                forloop.dependency = 'nonlinear'
+            elif forblock.dependency == 'linear':
+                forloop.dependency = 'linear'
+            elif (forloop.condition().dependency != 'constant' or forloop.initial().dependency() != 'constant') or forblock.dependency == 'noprobe':
+                forloop.dependency = 'noprobe'
+            else:
+                forloop.dependency = 'constant'
 
-#    <admst:when test="[datatypename='case']">
-#      <admst:variable name="globaltreenode" path="case"/>
-#      <admst:apply-templates select="case" match="e:dependency"/>
-#      <admst:variable name="globaltreenode"/>
-#      <admst:for-each select="caseitem">
-#        <admst:for-each select="condition">
-#          <admst:variable name="globaltreenode" path="."/>
-#          <admst:apply-templates select="." match="e:dependency"/>
-#          <admst:variable name="globaltreenode"/>
-#        </admst:for-each>
-#        <admst:apply-templates select="code" match="dependency"/>
-#      </admst:for-each>
-#    </admst:when>
-#    <admst:when test="[datatypename='conditional']">
-#      <admst:push into="$globalmodule/conditional" select="."/>
-#      <admst:apply-templates select="if" match="e:dependency"/>
-#      <admst:choose>
-#        <admst:when test="[$globalopdependent='no' and if/dependency!='constant']">
-#          <admst:variable name="globalopdependent" string="yes"/>
-#          <admst:apply-templates select="then|else" match="dependency"/>
-#          <admst:variable name="globalopdependent" string="no"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:apply-templates select="then|else" match="dependency"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#      <!--
-#          cd:  i=c          i!=c
-#               c  np l  nl  np np l  nl
-#               np np l  nl  np np l  nl
-#               l  l  l  nl  l  l  l  nl
-#               nl nl nl nl  nl nl nl nl
-#      -->
-#      <admst:choose>
-#        <admst:when test="[then/dependency='nonlinear' or else/dependency='nonlinear']">
-#          <admst:value-to select="dependency" string="nonlinear"/>
-#        </admst:when>
-#        <admst:when test="[then/dependency='linear' or else/dependency='linear']">
-#          <admst:value-to select="dependency" string="linear"/>
-#        </admst:when>
-#        <admst:when test="[if/dependency!='constant' or then/dependency='noprobe' or else/dependency='noprobe']">
-#          <admst:value-to select="dependency" string="noprobe"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:value-to select="dependency" string="constant"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
-#    <admst:when test="[datatypename='contribution']">
-#      <admst:variable name="globalcontribution" path="."/>
-#      <admst:apply-templates select="rhs" match="e:dependency"/>
-#      <admst:variable name="globalcontribution"/>
-#      <admst:push into="lhs/probe" select="rhs/probe" onduplicate="ignore"/>
-#      <admst:value-to select="dependency" string="nonlinear"/>
-#    </admst:when>
-#    <admst:when test="[datatypename='assignment']">
-#      <admst:choose>
-#        <admst:when test="[lhs/datatypename='array']">
-#          <admst:variable name="lhs" path="lhs/variable"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:variable name="lhs" path="lhs"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#      <admst:choose>
-#        <admst:when test="[$globalpartitionning='initial_model']">
-#          <admst:value-to select="$lhs/setinmodel" string="yes"/>
-#        </admst:when>
-#        <admst:when test="[$globalpartitionning='initial_instance']">
-#          <admst:value-to select="$lhs/setininstance" string="yes"/>
-#        </admst:when>
-#        <admst:when test="[$globalpartitionning='initial_step']">
-#          <admst:value-to select="$lhs/setininitial_step" string="yes"/>
-#        </admst:when>
-#        <admst:when test="[$globalpartitionning='noise']">
-#          <admst:value-to select="$lhs/setinnoise" string="yes"/>
-#        </admst:when>
-#        <admst:when test="[$globalpartitionning='final_step']">
-#          <admst:value-to select="$lhs/setinfinal" string="yes"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:value-to select="$lhs/setinevaluate" string="yes"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#      <admst:variable name="globalassignment" path="."/>
-#      <admst:apply-templates select="rhs" match="e:dependency"/>
-#      <admst:variable name="globalassignment"/>
-#      <admst:push into="$lhs/variable" select="rhs/variable" onduplicate="ignore"/>
-#      <admst:value-to test="rhs/variable[TemperatureDependent='yes']" select="$lhs/TemperatureDependent" string="yes"/>
-#      <!--
-#        d=rhs.d,d=(c and D)?np
-#        l(l,r,$globalopdependent)
-#        $globalopdependent='no'  $globalopdependent='yes'
-#        c  np l  nl               np np l  nl
-#        np np l  nl               np np l  nl
-#        l  l  l  nl               l  l  l  nl
-#        nl nl nl nl               nl nl nl nl
-#      -->
-#      <admst:value-to select="dependency" path="rhs/dependency"/>
-#      <admst:choose>
-#        <admst:when test="[$lhs/prototype/dependency='nonlinear' or rhs/dependency='nonlinear']">
-#          <admst:value-to select="$lhs/(.|prototype)/dependency" string="nonlinear"/>
-#        </admst:when>
-#        <admst:when test="[$lhs/prototype/dependency='linear' or rhs/dependency='linear']">
-#          <admst:value-to select="$lhs/(.|prototype)/dependency" string="linear"/>
-#        </admst:when>
-#        <admst:when test="[$globalopdependent='yes' or $lhs/prototype/dependency='noprobe' or rhs/dependency='noprobe']">
-#          <admst:value-to select="$lhs/(.|prototype)/dependency" string="noprobe"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:value-to select="$lhs/(.|prototype)/dependency" string="constant"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#      <admst:push into="$lhs/probe" select="rhs/probe" onduplicate="ignore"/>
-#    </admst:when>
-#    <admst:when test="[datatypename='block']">
-#      <admst:reverse select="item|variable"/>
-#      <admst:variable name="forcepartitionning" string="yes"/>
-#      <admst:choose>
-#        <admst:when test="[name='initial_model']">
-#          <admst:variable name="globalpartitionning" string="initial_model"/>
-#        </admst:when>
-#        <admst:when test="[name='initial_instance']">
-#          <admst:variable name="globalpartitionning" string="initial_instance"/>
-#        </admst:when>
-#        <admst:when test="[name='initial_step']">
-#          <admst:variable name="globalpartitionning" string="initial_step"/>
-#        </admst:when>
-#        <admst:when test="[name='noise']">
-#          <admst:variable name="globalpartitionning" string="noise"/>
-#        </admst:when>
-#        <admst:when test="[name='final_step']">
-#          <admst:variable name="globalpartitionning" string="final_step"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:variable name="forcepartitionning" string="no"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#      <admst:apply-templates select="item" match="dependency"/>
-#      <admst:variable test="[$forcepartitionning='yes']" name="globalpartitionning"/>
-#      <admst:choose>
-#        <admst:when test="item[dependency='nonlinear']">
-#          <admst:value-to select="dependency" string="nonlinear"/>
-#        </admst:when>
-#        <admst:when test="item[dependency='linear']">
-#          <admst:value-to select="dependency" string="linear"/>
-#        </admst:when>
-#        <admst:when test="item[dependency='noprobe']">
-#          <admst:value-to select="dependency" string="noprobe"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:value-to select="dependency" string="constant"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
-#    <admst:when test="[datatypename='nilled']"/>
-#    <admst:when test="[datatypename='blockvariable']"/>
-#    <admst:otherwise>
-#      <admst:fatal format="%(datatypename): case not handled\n"/>
-#    </admst:otherwise>
-#  </admst:choose>
-#</admst:template>
+    def visit_case(self, Case):
+        self.globaltreenode = Case
+        Case.visit(self)
+        self.globaltreenode = None
+        for ci in Case.caseitem.get_list():
+            for co in ci.condition.get_list():
+                self.globaltreenode = co
+                co.visit(self)
+                self.globaltreenode = None
+            ci.visit(self)
+
+    def visit_conditional(self, conditional):
+        self.globalmodule.conditional.append(conditional.id)
+        conditional.If().visit(self)
+        if (not self.globalopdependent) and conditional.If().dependency != 'constant':
+            self.globalopdependent = True
+            conditional.Then().visit(self)
+            if conditional.Else:
+                conditional.Else().visit(self)
+            self.globalopdependent = False
+        else:
+            conditional.Then().visit(self)
+            if conditional.Else:
+                conditional.Else().visit(self)
+        if conditional.Else:
+            deps = [conditional.Then().dependency, conditional.Else().dependency]
+        else:
+            deps = [conditional.Then().dependency,]
+        conditional.dependency = 'constant'
+        for d in ('nonlinear', 'linear', 'noprobe',):
+            if d in deps:
+                conditional.dependency = d
+                break
+
+    def visit_contribution(self, contribution):
+        self.globalcontribution = contribution
+        contribution.rhs().visit(self)
+        self.globalcontribution = None
+        contribution.lhs().probe
+        for probe in contribution.rhs().probe:
+            contribution.lhs().probe.append(probe, True)
+        contribution.dependency = 'nonlinear'
+
+    def visit_assignment(self, assignment):
+        assignment.TemperatureDependent = False
+        ldn = assignment.get_datatypename()
+        if ldn == 'array':
+            lhs = assignment.lhs().variable()
+        else:
+            lhs = assignment.lhs()
+
+        if self.globalpartitionning == 'initial_model':
+            lhs.prototype().setinmodel = True
+        elif self.globalpartitionning == 'initial_instance':
+            lhs.prototype().setininstance = True
+        elif self.globalpartitionning == 'initial_step':
+            lhs.prototype().setininitial_step = True
+        elif self.globalpartitionning == 'noise':
+            lhs.prototype().setinnoise = True
+        elif self.globalpartitionning == 'final_step':
+            lhs.prototype().setinfinal = True
+        else:
+            lhs.prototype().setinevaluate = True
+
+        self.globalassignment = assignment
+        rhs = assignment.rhs()
+        rhs.visit(self)
+        self.globalassignment = None
+
+        if not hasattr(lhs, 'variable'):
+            lhs.variable = []
+
+        lhs.TemperatureDependent = False
+        for x in rhs.variable:
+            if x not in lhs.variable:
+                lhs.variable.append(x)
+                if rhs.TemperatureDependent:
+                    lhs.TemperatureDependent = rhs.TemperatureDependent
+        assignment.dependency = rhs.dependency
+
+        deps = [lhs.prototype().dependency, rhs.dependency]
+
+        lhs.dependency = 'constant'
+        lhs.prototype().dependency = 'constant'
+        isset = False
+        for d in ('nonlinear', 'linear', 'noprobe'):
+            if d in deps:
+                lhs.dependency = d
+                lhs.prototype().dependency = d
+                isset = True
+                break
+
+        if (not isset) and self.globalopdependent:
+            lhs.dependency = 'noprobe'
+            lhs.prototype().dependency = 'noprobe'
+        for probe in rhs.probe:
+            lhs.probe.append(probe, True)
+
+    def visit_block(self, block):
+        forcepartitionning = True
+        name = block.lexval
+        if name in  ('initial_model', 'initial_instance', 'initial_step', 'noise', 'final_step,'):
+            self.globalpartitionning = name
+            forcepartitionning = True
+        else:
+            forcepartitionning = False
+
+        for item in block.item.get_list():
+            item.visit(self)
+
+        if forcepartitionning:
+            self.globalpartitionning = ''
+
+        deps = set([x.dependency for x in block.item.get_list()])
+        block.dependency = 'constant'
+        for d in ('nonlinear', 'linear', 'noprobe'):
+            if d in deps:
+                block.dependency = d
+                break
+
+    def visit_nilled(self, nilled):
+        nilled.dependency = 'constant'
+
+    def visit_blockvariable(self, blockvariable):
+        deps = set([x.dependency for x in blockvariable.variable.get_list()])
+        blockvariable.dependency = 'constant'
+        for d in ('nonlinear', 'linear', 'noprobe'):
+            if d in deps:
+                blockvariable.dependency = d
+                break
 #
 #<admst:template match="adms.implicit.xml.module">
 #  <admst:variable name="globalmodule" path="."/>
