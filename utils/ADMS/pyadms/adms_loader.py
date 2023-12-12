@@ -15,18 +15,26 @@ class admst_reference_list:
             raise RuntimeError("mismatch type")
 
     def append(self, x, ignore_duplicate = False):
-        if not isinstance(x, int):
-            raise RuntimeError("mismatch type")
-        if ignore_duplicate and x not in self.reference_list:
-            self.reference_list.append(x)
+        #print(type(x))
+        if isinstance(x, int):
+            y = x
+        elif isinstance(x, admst):
+            y = x.id
         else:
-            self.reference_list.append(x)
+            #print(type(x))
+            raise RuntimeError("mismatch type")
+
+        if ignore_duplicate:
+            # linear scan
+            if y not in self.reference_list:
+                self.reference_list.append(y)
+        else:
+            self.reference_list.append(y)
 
     def extend(self, other, ignore_duplicate = False):
-        if not isinstance(x, admst_reference_list):
+        if not isinstance(other, admst_reference_list):
             raise RuntimeError("mismatch type")
 
-        # TODO: consider using set for large reference list check
         for o in other.reference_list:
             self.append(o, ignore_duplicate)
 

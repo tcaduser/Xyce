@@ -74,8 +74,15 @@ class dependency_visitor:
 
     def visit_expression(self, expression):
         self.globalexpression = expression
+
+        expression.variable = expression.create_reference_list()
         expression.probe = expression.create_reference_list()
+        expression.function = expression.create_reference_list()
+
         tree = expression.tree()
+        #if self.globalexpression is None:
+        #    print(expression)
+        #    raise RuntimeError("JJJJJ")
         tree.visit(self)
         self.globalexpression = None
         expression.dependency = tree.dependency
@@ -92,16 +99,15 @@ class dependency_visitor:
             'noise' : lambda v : setattr(v, 'usedinnoise', True),
             'final_step' : lambda v : setattr(v, 'usedinfinal', True),
         }
-        f = partionning_map[self.globalpartitionning]
+        f = partitionning_map[self.globalpartitionning]
         for v in expression.variable.get_list():
             f(v)
-
-        expression.math = tree.math
+        if hasattr(tree, 'math'):
+            expression.math = tree.math
 
     def visit_probe(self, probe):
         probe.dependency = 'linear'
-        if probe.id not in self.globalexpression.probe:
-            self.globalexpression.probe.append(probe.id, True)
+        self.globalexpression.probe.append(probe, True)
 
         if self.globalhandleafoutputs:
             self.globalaf.probe.append(probe.id, True)
@@ -111,9 +117,11 @@ class dependency_visitor:
         array.dependency = array.variable().dependency
 
     def visit_variable(self, variable):
-        self.globalexpression.probe.extend(variable.probe, True)
-        self.globalexpression.variable.extend(variable, True)
-        self.globaltreenode.variable.append(variable, True)
+        if self.globalexpression is not None:
+            self.globalexpression.probe.extend(variable.probe, True)
+            self.globalexpression.variable.append(variable, True)
+        if self.globaltreenode is not None:
+            self.globaltreenode.variable.append(variable, True)
         variable.dependency = variable.prototype().dependency
 
         if self.globalhandleafoutputs:
@@ -123,8 +131,8 @@ class dependency_visitor:
     def visit_mapply_unary(self, unary):
         arg = unary.args.get_head()
         arg.visit(self)
-        unary.dependency = args.dependency
-        unary.math = f'-({arg.math})'
+        unary.dependency = arg.dependency
+        #unary.math = f'-({arg.math})'
 
     def visit_mapply_binary(self, binary):
         args = list(binary.args.get_list())
@@ -146,6 +154,7 @@ class dependency_visitor:
         args = list(ternary.args.get_list())
         for arg in args:
             arg.visit(self)
+        deps = [x.dependency for x in args]
         if 'nonlinear' in deps[1:]:
             ternary.dependency = 'nonlinear'
         elif 'linear' in deps[1:]:
@@ -208,7 +217,7 @@ class dependency_visitor:
             #
             # Analog functions
             #
-            definition = function.definition()
+            definition = function.definition
             if (definition is not None) and (definition.datatypename == 'analogfunction'):
                for v in definition.variable.get_list():
                     if variable.output and variable.name == function.name:
@@ -270,16 +279,19 @@ class dependency_visitor:
                 function.dependency = 'noprobe'
             else:
                 function.dependency = 'constant'
-        if function.dependency in ('linear', 'nonlinear'):
+        if (self.globalexpression is not None) and (function.dependency in ('linear', 'nonlinear')):
             self.globalexpression.hasVoltageDependentFunction = True
 
         function.subexpression = self.globalexpression
         if name == 'ddt':
-            self.globalcontribution.fixmedynamic = True
+            if self.globalcontribution is not None:
+                self.globalcontribution.fixmedynamic = True
         elif name == 'white_noise':
-            self.globalcontribution.fixmewhitenoise = True
+            if self.globalcontribution is not None:
+                self.globalcontribution.fixmewhitenoise = True
         elif name == 'flicker_noise':
-            self.globalcontribution.fixmeflickernoise = True
+            if self.globalcontribution is not None:
+                self.globalcontribution.fixmeflickernoise = True
         elif name == '$temperature':
             self.globalassignment.lhs().TemperatureDependent = True
 
@@ -338,9 +350,10 @@ class dependency_visitor:
             self.globalexpression.function.append(function)
         elif name == 'transition':
             self.globalexpression.function.append(function)
-        elif not hasattr(function, 'definition'):
-            raise RuntimeError(f'analog function {name} is undefined')
-        self.globalexpression = None
+        else:
+            if not hasattr(function, 'definition'):
+                raise RuntimeError(f'analog function {name} is undefined')
+            self.globalexpression.function = function
 
     def visit_number(self, number):
         number.dependency = 'constant'
@@ -449,7 +462,7 @@ class dependency_visitor:
         contribution.rhs().visit(self)
         self.globalcontribution = None
         contribution.lhs().probe
-        for probe in contribution.rhs().probe:
+        for probe in contribution.rhs().probe.get_list():
             contribution.lhs().probe.append(probe, True)
         contribution.dependency = 'nonlinear'
 
@@ -483,10 +496,10 @@ class dependency_visitor:
             lhs.variable = []
 
         lhs.TemperatureDependent = False
-        for x in rhs.variable:
+        for x in rhs.variable.get_list():
             if x not in lhs.variable:
                 lhs.variable.append(x)
-                if rhs.TemperatureDependent:
+                if hasattr(rhs, 'TemperatureDependent') and rhs.TemperatureDependent:
                     lhs.TemperatureDependent = rhs.TemperatureDependent
         assignment.dependency = rhs.dependency
 
@@ -505,7 +518,7 @@ class dependency_visitor:
         if (not isset) and self.globalopdependent:
             lhs.dependency = 'noprobe'
             lhs.prototype().dependency = 'noprobe'
-        for probe in rhs.probe:
+        for probe in rhs.probe.get_list():
             lhs.probe.append(probe, True)
 
     def visit_block(self, block):
