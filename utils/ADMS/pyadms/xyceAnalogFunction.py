@@ -140,64 +140,31 @@ class af:
         self.returnedDiff = self.get_zero_derivatives()
         # TODO: set derivative to 0 if no real
         self.returnedDiff[self.get_expression_derivative_name(variable.name)] = '1.0'
+        return self.returnedExpression, self.returnedDiff
 
-#<!-- unary operators -->
-#<!-- Note: this operator has one operand, arg1, which must be processed first
-#     before returning value and derivatives. -->
-#<admst:template match="xyceAnalogFunctions:mapply_unary">
-#  <!-- First decide what type of operator we are -->
-#  <admst:if test="[name='plus']">
-#    <admst:variable name="op" value="+"/>
-#  </admst:if>
-#  <admst:if test="[name='minus']">
-#    <admst:variable name="op" value="-"/>
-#  </admst:if>
-#  <admst:if test="[name='not']">
-#    <admst:variable name="op" value="!"/>
-#  </admst:if>
-#  <admst:if test="[name='bw_not']">
-#    <admst:variable name="op" value="~"/>
-#  </admst:if>
-#  <admst:choose>
-#    <admst:when test="[arg1/math/value=0.0]">
-#      <admst:variable name="expression" value="0.0"/>
-#      <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#        <admst:value-of select="name"/>
-#        <admst:variable name="d_exp_d_%s" value="0.0"/>
-#      </admst:for-each>
-#    </admst:when>
-#    <admst:otherwise>
-#      <admst:value-of select="arg1/adms/datatypename"/>
-#      <admst:apply-templates select="arg1" match="xyceAnalogFunctions:%s" required="yes">
-#        <admst:value-of select="returned('returnedExpression')/value"/>
-#        <admst:variable name="expression" select="($op%s)"/>
-#
-#        <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#          <admst:value-of select="name"/>
-#          <admst:value-of select="returned('d_exp_d_%s')/value"/>
-#          <admst:variable name="a1Deriv" select="%s"/>
-#          <admst:choose>
-#            <admst:when test="[$a1Deriv='0.0']">
-#              <admst:value-of select="name"/>
-#              <admst:variable name="d_exp_d_%s" select="0.0"/>
-#            </admst:when>
-#            <admst:otherwise>
-#              <admst:value-of select="name"/>
-#              <admst:variable name="d_exp_d_%s" select="($op$a1Deriv)"/>
-#            </admst:otherwise>
-#          </admst:choose>
-#        </admst:for-each>
-#      </admst:apply-templates>
-#    </admst:otherwise>
-#  </admst:choose>
-#  <admst:return name="returnedExpression" value="$expression"/>
-#  <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#    <admst:value-of select="name"/>
-#    <admst:value-of select="name"/>
-#    <admst:return name="d_exp_d_%s" value="$(d_exp_d_%s)"/>
-#  </admst:for-each>
-#</admst:template>
-#
+    def visit_unary(self, unary):
+        ops = {
+            'plus', '+',
+            'minus', '-',
+            'not', '!',
+            'bw_not', '~',
+        }
+        op = ops[unary.name]
+
+        arg1 = unary.args.get_item(0)
+        #TODO: maybe get rid of premature optimization until later
+        #if arg1.value = 0.0:
+        #    self.returnedExpression = '0.0'
+        #    self.returnedDiff = self.get_zero_derivatives()
+        #else:
+        returnedExpression, returnedDiff = arg1.visit(self)
+        self.returnedExpression = f'({op} {returnedExpression})'
+        for k, v in returnedDiff.items():
+            self.returnedDiff[k] = f'({op} {v})'
+
+        return self.returnedExpression, self.returnedDiff
+
+
 #<!-- binary operators -->
 #<admst:template match="xyceAnalogFunctions:mapply_binary">
 #  <!-- process arguments and get their derivatives -->
