@@ -7,7 +7,6 @@
 #  Copyright (C) 2002-2012 Laurent Lemaitre <r29173@users.sourceforge.net>
 #  Copyright (C) 2015-2016 Guilherme Brondani Torri <guitorri@gmail.com>
 #                2012 Ryan Fox <ryan.fox@upverter.com>
-#  Copyright (C) DEVSIM LLC (jsanchez@devsim.com)
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by

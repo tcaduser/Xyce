@@ -13,5 +13,10 @@ import pyadms.xyceVersion as xyceVersion
 xyceVersion.run()
 print(admst.get_simulator().__dict__)
 
-#import pyadms.xyceBasicTemplates as xyceBasicTemplates 
-#xyceBasicTemplates.BasicData().run()
+import pyadms.xyceBasicTemplates as xyceBasicTemplates
+xyceBasicTemplates.BasicData().run()
+
+import pyadms.xyceAnalogFunction as xyceAnalogFunction
+
+#	$(ADMSDIR)/xyceHeaderFile_nosac.xml \
+#	$(ADMSDIR)/xyceImplementationFile_nosac.xml

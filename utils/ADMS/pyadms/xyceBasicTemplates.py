@@ -89,8 +89,9 @@ class BasicData:
     def xyceFlowProbeConstantName(self, branch):
         return f'admsProbeID_I_{probe.nature.name}_{branch.pnode.name}_{branch.nnode.name}'
 
-#  <admst:template match="xyceJacobianOffsetName">
-#    <admst:text format="A_%(row/name)_Equ_%(column/name)_NodeOffset"/>
+    def xyceJacobianOffsetName(self, jacobian):
+        return f'A_{jacobian.row.name}_Equ_{jacobian.column.name}_NodeOffset'
+
 #  </admst:template>
 #
 #  <!--

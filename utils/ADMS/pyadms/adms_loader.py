@@ -87,11 +87,11 @@ class admst:
         if len(self.references) == 0:
             self.references = None
 
-    def visit_implemented(self, visitor):
-        getattr(visitor, 'visit_' + self.__class__.__name__)(self)
+    def visit_implemented(self, visitor, *arg, **kwarg):
+        return getattr(visitor, 'visit_' + self.__class__.__name__)(self)
 
-    def visit(self, visitor):
-        self.visit_implemented(visitor)
+    def visit(self, visitor, *arg, **kwarg):
+        return self.visit_implemented(visitor, *arg, **kwarg)
 
     def get_datatypename(self):
         return self.__class__.__name__
