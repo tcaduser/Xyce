@@ -7,7 +7,7 @@
 #  Copyright (C) 2002-2012 Laurent Lemaitre <r29173@users.sourceforge.net>
 #  Copyright (C) 2015-2016 Guilherme Brondani Torri <guitorri@gmail.com>
 #                2012 Ryan Fox <ryan.fox@upverter.com>
-#  Copyright (C) 2023 Juan Sanchez, DEVSIM LLC (jsanchez@devsim.com)
+#  Copyright (C) DEVSIM LLC (jsanchez@devsim.com)
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -540,38 +540,62 @@ class dependency_visitor:
             if d in deps:
                 blockvariable.dependency = d
                 break
-#
-#<admst:template match="adms.implicit.xml.module">
-#  <admst:variable name="globalmodule" path="."/>
-#  <admst:reverse select="analogfunction|analogfunction/variable|node|variable
-#                         |instance|instance/terminal|contribution|forloop|whileloop|case|callfunction"/>
-#  <admst:value-to select="node[location='ground']/grounded" string="yes"/>
-#  <admst:for-each select="branch">
-#    <admst:value-to select="discipline" path="pnode/discipline"/>
-#    <admst:value-to select="[nnode/grounded='yes']/grounded" string="yes"/>
-#    <!-- FIXME: check that pnode/nnode have same discipline -->
-#  </admst:for-each>
-#  <admst:for-each select="source|probe">
-#    <admst:value-to select="discipline" path="branch/discipline"/>
-#    <admst:value-to select="[branch/grounded='yes']/grounded" string="yes"/>
-#  </admst:for-each>
+
+    def visit_module(self, module):
+        self.globalmodule = module
+
+        for node in module.node.get_list():
+            if node.location == 'ground':
+                node.grounded = True
+            else:
+                node.grounded = False
+
+        for branch in module.branch.get_list():
+            # need to check both nnode and pnode for this and next
+            branch.discipline = branch.pnode().discipline
+            branch.grounded = branch.nnode().grounded
+
+        for source in module.source.get_list():
+            source.discipline = source.branch().discipline
+            source.grounded = source.branch().grounded
+
+        for probe in module.probe.get_list():
+            probe.discipline = probe.branch().discipline
+            probe.grounded = probe.branch().grounded
+
+        for instance in module.instance.get_list():
+            module.instantiator.append(instance, True)
 #  <admst:for-each select="instance">
-#    <admst:push into="module/instantiator" select=".." onduplicate="ignore"/>
-#    <admst:assert select="terminal" test="terminal[nodefrommodule/location='external']"
+#    <admst:assert select="terminal" test="nodefrommodule[location='external']"
 #                  format="%(../instantiator).%(nodefrommodule/name): is not terminal\n"/>
-#    <admst:if test="[count(parameterset)!=0]">
-#      <admst:assert select="parameterset" test="parameterset[parameter/input='yes']"
-#                    format="%(../instantiator).%(parameter/name): is not input parameter\n"/>
-#    </admst:if>
+#    <admst:assert select="parameterset" test="parameter[input='yes']"
+#                  format="%(../instantiator).%(parameter/name): is not input parameter\n"/>
 #  </admst:for-each>
-#  <admst:apply-templates select="(analogfunction/tree)|(analog/code)" match="dependency"/>
-#  <admst:for-each select="variable">
-#    <admst:value-to select="[dependency!='constant']/OPdependent" string="yes"/>
-#    <admst:value-to select="output" path="input"/>
-#    <admst:for-each select="attribute">
-#      <admst:value-to select="[name='type' and value='instance']/../parametertype" string="instance"/>
-#      <admst:value-to select="[name='ask' and value='yes']/../output" string="yes"/>
-#      <admst:value-to select="[name='ask' and value='no']/../output" string="no"/>
+
+        for analogfunction in module.analogfunction.get_list():
+            analogfunction.tree().visit(self)
+            analogfunction.code().visit(self)
+
+        for analog in module.analog.get_list():
+            analog.code().visit(self)
+
+        # this looks like module variable is actually variable prototype
+        for v in module.variable.get_list():
+            if v.dependency != 'constant':
+                v.OPdependent = True
+            v.output = v.input
+
+            if 'type' in v.attributes:
+                if v.attributes['type'] == 'instance':
+                    v.parametertype = 'instance'
+            elif 'ask' in v.attributes:
+                if v.attributes['ask'] == 'yes':
+                    v.output == True
+                elif v.attributes['ask'] == 'no':
+                    v.output == False
+                else:
+                    raise RuntimeError('not valid type')
+
 #      <!-- set output flag if desc or units attribute and we are a module-
 #            scoped variable,  not an input parameter, and have
 #            desc or units attribute, per Verilog-A LRM 2.4, section 3.2.1 -->
@@ -582,36 +606,43 @@ class dependency_visitor:
 #          <admst:value-to select="../output" string="yes"/>
 #      </admst:if>
 #    </admst:for-each>
-#    <admst:apply-templates select="default" match="e:dependency"/>
+
+            if v.default is not None:
+                default = v.default()
+                default.visit(self)
+
 #    <admst:value-to
 #       select="default[exists(tree[datatypename='mapply_unary' and name='minus' and arg1/datatypename='number' and arg1/value='1.0'])]/value"
 #       string="is_neg_one"/>
 #    <admst:value-to select="default[exists(tree[datatypename='number' and value='0.0'])]/value" string="is_zero"/>
 #    <admst:value-to select="default[exists(tree[datatypename='number' and value='1.0'])]/value" string="is_one"/>
-#    <admst:value-to select="scope"
-#      test="[(input='yes' and parametertype='model') or (input='no' and (setinmodel='yes' or usedinmodel='yes')
-#        and (setininstance='yes' or setininitial_step='yes' or setinevaluate='yes' or setinnoise='yes' or setinfinal='yes'
-#        or usedininstance='yes' or usedininitial_step='yes' or usedinevaluate='yes' or usedinnoise='yes' or usedinfinal='yes' or output='yes'))]"
-#      string="global_model"/>
-#    <admst:value-to select="scope"
-#      test="[(input='yes' and parametertype='instance') or
-#      (input='no' and setinmodel='no' and usedinmodel='no' and
-#        (((setininstance='yes' or usedininstance='yes') and (setininitial_step='yes' or setinevaluate='yes' or setinnoise='yes' or setinfinal='yes'
-#        or usedininitial_step='yes' or usedinevaluate='yes' or usedinnoise='yes' or usedinfinal='yes' or output='yes'))
-#        or ((setininitial_step='yes' or usedininitial_step='yes') and (setinevaluate='yes' or setinnoise='yes' or setinfinal='yes'
-#        or usedinevaluate='yes' or usedinnoise='yes' or usedinfinal='yes' or output='yes'))
-#        or ((setinevaluate='yes' or usedinevaluate='yes') and (setinnoise='yes' or setinfinal='yes'
-#          or usedinnoise='yes' or usedinfinal='yes' or output='yes'))
-#        or ((setinnoise='yes' or usedinnoise='yes') and (setinfinal='yes' or usedinfinal='yes' or output='yes'))
-#        or ((setinfinal='yes' or usedinfinal='yes') and output='yes')
-#        or (setinmodel='no' and setininstance='no' and setinevaluate='no' and setinnoise='no' and setinfinal='no' and
-#            usedinmodel='no' and usedininstance='no' and usedinevaluate='no' and usedinnoise='no' and usedinfinal='no' and output='yes')
-#      ))]"
-#      string="global_instance"/>
-#    <admst:value-to select="isstate"
-#      test="[input='no' and scope='global_instance' and setininitial_step='yes' and (setinevaluate='yes' or usedinevaluate='yes')]"
-#      string="yes"/>
-#  </admst:for-each>
+
+            v.scope = None
+            if (v.input and v.parametertype=='model') or ((not v.input) and (v.setinmodel or v.usedinmodel)
+                and (v.setininstance or v.setininitial_step or v.setinevaluate or v.setinnoise or v.setinfinal
+                or v.usedininstance or v.usedininitial_step or v.usedinevaluate or v.usedinnoise or v.usedinfinal or v.output)):
+                v.scope = "global_model"
+            elif ((not v.input) and (not v.setinmodel) and (not v.usedinmodel) and
+                (((v.setininstance or v.usedininstance) and (v.setininitial_step or v.setinevaluate or v.setinnoise or v.setinfinal
+                or v.usedininitial_step or v.usedinevaluate or v.usedinnoise or v.usedinfinal or v.output))
+                or ((v.setininitial_step or v.usedininitial_step) and (v.setinevaluate or v.setinnoise or v.setinfinal
+                or v.usedinevaluate or v.usedinnoise or v.usedinfinal or v.output))
+                or ((v.setinevaluate or v.usedinevaluate) and (v.setinnoise or v.setinfinal
+                  or v.usedinnoise or v.usedinfinal or v.output))
+                or ((v.setinnoise or v.usedinnoise) and (v.setinfinal or v.usedinfinal or v.output))
+                or ((v.setinfinal or v.usedinfinal) and v.output)
+                or ((not v.setinmodel) and (not v.setininstance) and (not v.setinevaluate) and (not v.setinnoise) and (not v.setinfinal) and
+                    (not v.usedinmodel) and (not v.usedininstance) and (not v.usedinevaluate) and (not v.usedinnoise) and (not v.usedinfinal) and v.output)
+              )):
+                v.scope = 'global_instance'
+
+            if (not v.input) and v.scope=='global_instance' and v.setininitial_step and (v.setinevaluate or v.usedinevaluate):
+                v.isstate = True
+            else:
+                v.isstate = False
+
+# MODIFY template in module
+#### TODO: FINISH HERE
 #  <admst:template match="modify">
 #    <admst:choose>
 #      <admst:when test="[datatypename='block']">
