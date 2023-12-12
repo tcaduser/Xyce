@@ -97,9 +97,12 @@ class af:
                 continue
             yield v
 
+    def get_expression_derivative_name(self, name):
+        return f'd_exp_d_{name}'
+
     def get_zero_derivatives(self):
         afdict = {}
-        for k in [f'd_exp_d_{v.name}' for v in self.get_derivative_variables()]:
+        for k in [self.get_expression_derivative_name(v.name) for v in self.get_derivative_variables()]:
             afdict[k] = '0.0'
 
     def processTerm(self, arg):
@@ -132,30 +135,12 @@ class af:
         self.returnedDiff = self.get_zero_derivatives()
         return self.returnedExpression, self.returnedDiff
 
-#<!-- variable -->
-#<admst:template match="xyceAnalogFunctions:variable">
-#  <admst:variable name="theVar" select="%(.)"/>
-#  <admst:variable name="variable" select="%(name)"/>
-#  <admst:return name="returnedExpression" value="$variable"/>
-#  <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#    <admst:variable name="wrt" select="%(name)"/>
-#    <admst:choose>
-#      <admst:when test="[$theVar/type != 'real']">
-#        <admst:return name="d_exp_d_$wrt" value="0.0"/>
-#      </admst:when>
-#      <admst:when test="[$variable='$wrt']">
-#        <admst:return name="d_exp_d_$wrt" value="1.0"/>
-#      </admst:when>
-#      <admst:when test="../..[input='yes']">
-#        <admst:return name="d_exp_d_$wrt" value="0.0"/>
-#      </admst:when>
-#      <admst:otherwise>
-#        <admst:return name="d_exp_d_$wrt" value="d_$(variable)_d_$wrt"/>
-#      </admst:otherwise>
-#    </admst:choose>
-#  </admst:for-each>
-#</admst:template>
-#
+    def visit_variable(self, variable):
+        self.returnedExpression = variable.name
+        self.returnedDiff = self.get_zero_derivatives()
+        # TODO: set derivative to 0 if no real
+        self.returnedDiff[self.get_expression_derivative_name(variable.name)] = '1.0'
+
 #<!-- unary operators -->
 #<!-- Note: this operator has one operand, arg1, which must be processed first
 #     before returning value and derivatives. -->
