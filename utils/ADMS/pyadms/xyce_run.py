@@ -1,11 +1,14 @@
 import pyadms.adms_loader
 import pyadms.xyce_implicit as xyce_implicit
+import sys
 
-admst = pyadms.adms_loader.load_json('foo.json')
+
+# Run the implicit rules
+admst = pyadms.adms_loader.load_json(sys.argv[1])
 dv = xyce_implicit.dependency_visitor()
 admst.get_module().visit(dv)
 
-#from . import xyceVersion
+# Set the simulator version information
 import pyadms.xyceVersion as xyceVersion
 xyceVersion.run()
 print(admst.get_simulator().__dict__)
