@@ -182,63 +182,41 @@ class af:
 
         binary.returnedExpression = f'({args[0].returnedExpression} {op} {args[1].returnedExpression})'
 
+        sdict = {
+            'a0' : args[0].returnedExpression,
+            'a1' : args[1].returnedExpression,
+        }
         for v in self.get_derivative_variables():
             n = self.get_expression_derivative_name(v.name)
             d = [x.returnedDiff[n] for x in args]
-            sdict = {
-                'a0' : args[0].returnedExpression,
-                'a1' : args[1].returnedExpression,
+            sdict += {
                 'd0' : d[0],
                 'd1' : d[1],
             }
             binary.returnedDiff[n] = opexp % sdict
 
-#
-#<!-- Ternary operator (condition)?iftrue:iffalse -->
-#
-#<admst:template match="xyceAnalogFunctions:mapply_ternary">
-#  <!-- derivatives of conditional are not needed -->
-#  <admst:apply-templates select="arg1" match="xyceAnalogFunctions:processTerm">
-#    <admst:value-of select="returned('returnedExpression')/value"/>
-#    <admst:variable name="a1" select="%s"/>
-#  </admst:apply-templates>
-#  <admst:apply-templates select="arg2" match="xyceAnalogFunctions:processTerm">
-#    <admst:value-of select="returned('returnedExpression')/value"/>
-#    <admst:variable name="a2" select="%s"/>
-#    <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#      <admst:value-of select="name"/>
-#      <admst:value-of select="returned('d_exp_d_%s')/value"/>
-#      <admst:value-of select="name"/>
-#      <admst:variable name="d_a2_d_%s" select="%s"/>
-#    </admst:for-each>
-#  </admst:apply-templates>
-#  <admst:apply-templates select="arg3" match="xyceAnalogFunctions:processTerm">
-#    <admst:value-of select="returned('returnedExpression')/value"/>
-#    <admst:variable name="a3" select="%s"/>
-#    <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#      <admst:value-of select="name"/>
-#      <admst:value-of select="returned('d_exp_d_%s')/value"/>
-#      <admst:value-of select="name"/>
-#      <admst:variable name="d_a3_d_%s" select="%s"/>
-#    </admst:for-each>
-#  </admst:apply-templates>
-#  <admst:variable name="expression" select="($a1?$a2:$a3)"/>
-#  <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#    <admst:value-of select="name"/>
-#    <admst:variable name="a2Deriv" select="$(d_a2_d_%s)"/>
-#    <admst:value-of select="name"/>
-#    <admst:variable name="a3Deriv" select="$(d_a3_d_%s)"/>
-#    <admst:value-of select="name"/>
-#    <admst:variable name="d_exp_d_%s" select="($a1?$a2Deriv:$a3Deriv)"/>
-#  </admst:for-each>
-#  <admst:return name="returnedExpression" value="$expression"/>
-#  <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#    <admst:value-of select="name"/>
-#    <admst:value-of select="name"/>
-#    <admst:return name="d_exp_d_%s" value="$(d_exp_d_%s)"/>
-#  </admst:for-each>
-#</admst:template>
-#
+  def visit_mapply_ternary(self, ternary):
+        args = list(ternary.args.get_list())
+
+        for arg in args:
+            arg.visit(self)
+
+        sdict = {
+            'a0' : args[0].returnedExpression,
+            'a1' : args[1].returnedExpression,
+            'a2' : args[2].returnedExpression,
+        }
+        ternary.returnedExpression = '(%(a0)s ? %(a1)s : %(a2)s)' % sdict
+
+        for v in self.get_derivative_variables():
+            n = self.get_expression_derivative_name(v.name)
+            d = [x.returnedDiff[n] for x in args]
+            sdict += {
+                'd1' : d[1],
+                'd2' : d[2],
+            }
+            ternary.returnedDiff[n] = '(%(a0)s ? %(d1)s : %(d2)s)' % sdict
+
 #<!-- Function call -->
 #<admst:template match="xyceAnalogFunctions:function">
 #  <admst:variable name="doingAnalogFunctionCall" value="no"/>
