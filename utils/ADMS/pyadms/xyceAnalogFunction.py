@@ -166,10 +166,10 @@ class af:
 
     def visit_mapply_binary(self, binary):
         ops = {
-            'addp' : '+',
-            'addm' : '-',
-            'multtime' : '*',
-            'multdiv' : '/',
+            'addp' : ('+', '(%(d0)s + %(d1)s)',),
+            'addm' : ('-', '(%(d0)s - %(d1)s)',),
+            'multtime' : ('*', '((%(d0)s * %(a1)s) + (%(d1)s * %(a0)s))',),
+            'multdiv' : ('/', '((%(d0)s / %(a1)s) + (%(d1)s * %(a0)s/(%(a1)s*%(a1)s)))',),
         }
 
         args = list(binary.args.get_list())
@@ -177,28 +177,21 @@ class af:
         for arg in args:
             arg.visit(self)
 
-        op = ops[binary.name]
+        op = ops[binary.name][0]
+        opexp = ops[binary.name][1]
 
-        self.returnedExpression = f'({args[0].returnedExpression} {op} {args[1].returnedExpression})'
+        binary.returnedExpression = f'({args[0].returnedExpression} {op} {args[1].returnedExpression})'
 
-        if binary.name in ('addp', 'addm',):
-            for v in self.get_derivative_variables():
-                n = self.get_expression_derivative_name(v.name)
-                d = [x.returnedDiff[n] for x in args]
-                binary.returnedDiff[n] = f'({d[0]} {op} {d[1]})'
-        elif binary.name in ('multtime', 'multdiv',):
-            a = [x.returnedExpression for x in args]
-            for v in self.get_derivative_variables():
-                n = self.get_expression_derivative_name(v.name)
-                d = [x.returnedDiff[n] for x in args]
-                if binary.name == 'multtime':
-                    binary.returnedDiff[n] = f'(({d[0]} * {a[1]}) + ({d[1]} * {a[0]}))'
-                elif binary.name == 'multdiv':
-                    binary.returnedDiff[n] = f'(({d[0]} / {a[1]}) + ({d[1]} * {a[0]}/({a[1]}*{a[1]})))'
-                else:
-                    raise RuntimeError("bug")
-        else:
-            raise RuntimeError(f"Unexpected mapply_binary {binary.name}")
+        for v in self.get_derivative_variables():
+            n = self.get_expression_derivative_name(v.name)
+            d = [x.returnedDiff[n] for x in args]
+            sdict = {
+                'a0' : args[0].returnedExpression,
+                'a1' : args[1].returnedExpression,
+                'd0' : d[0],
+                'd1' : d[1],
+            }
+            binary.returnedDiff[n] = opexp % sdict
 
 #
 #<!-- Ternary operator (condition)?iftrue:iffalse -->
