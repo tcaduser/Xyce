@@ -105,44 +105,44 @@ class af:
         for k in [self.get_expression_derivative_name(v.name) for v in self.get_derivative_variables()]:
             afdict[k] = '0.0'
 
-    def processTerm(self, arg):
-        afdict = {}
-        returnedExpression, returnedDiff = arg.visit(self)
-        for v in self.globalAnalogFunction.variable.get_list():
-            if not v.input:
-                continue
-            k = f'd_exp_d_{v.name}'
-            returnedDiff[k] = v.returnedDiff[k]
-        arg.returnedExpression = returnedExpression
-        arg.returnedDiff = returnedDiff
-        return expression, returnedDiff
+    #def processTerm(self, arg):
+    #    afdict = {}
+    #    returnedExpression, returnedDiff = arg.visit(self)
+    #    for v in self.globalAnalogFunction.variable.get_list():
+    #        if not v.input:
+    #            continue
+    #        k = f'd_exp_d_{v.name}'
+    #        returnedDiff[k] = v.returnedDiff[k]
+    #    arg.returnedExpression = returnedExpression
+    #    arg.returnedDiff = returnedDiff
+    #    return expression, returnedDiff
 
     def visit_expression(self, expression):
         tree = expression.tree()
         tree.visit(self)
         expression.returnedExpression = tree.returnedExpression
         expression.returnedDiff = tree.returnedDiff
-        return self.returnedExpression, self.returnedDiff
+        return expression.returnedExpression, expression.returnedDiff
 
     def visit_number(self, number):
         # set in xyce_implicit
-        self.returnedExpression = number.value
-        self.returnedDiff = self.get_zero_derivatives()
-        return self.returnedExpression, self.returnedDiff
+        number.returnedExpression = number.value
+        number.returnedDiff = self.get_zero_derivatives()
+        return number.returnedExpression, number.returnedDiff
 
     def visit_string(self, string):
-        self.returnedExpression = f'"{string.value}"'
-        self.returnedDiff = self.get_zero_derivatives()
-        return self.returnedExpression, self.returnedDiff
+        string.returnedExpression = f'"{string.value}"'
+        string.returnedDiff = self.get_zero_derivatives()
+        return string.returnedExpression, string.returnedDiff
 
     def visit_variable(self, variable):
-        self.returnedExpression = variable.name
-        self.returnedDiff = self.get_zero_derivatives()
+        variable.returnedExpression = variable.name
+        variable.returnedDiff = self.get_zero_derivatives()
         # TODO: set derivative to 0 if no real
-        self.returnedDiff[self.get_expression_derivative_name(variable.name)] = '1.0'
-        return self.returnedExpression, self.returnedDiff
+        variable.returnedDiff[self.get_expression_derivative_name(variable.name)] = '1.0'
+        return variable.returnedExpression, variable.returnedDiff
 
-    def visit_unary(self, unary):
+    def visit_mapply_unary(self, unary):
         ops = {
             'plus', '+',
             'minus', '-',
@@ -154,354 +154,52 @@ class af:
         arg1 = unary.args.get_item(0)
         #TODO: maybe get rid of premature optimization until later
         #if arg1.value = 0.0:
-        #    self.returnedExpression = '0.0'
-        #    self.returnedDiff = self.get_zero_derivatives()
+        #    unary.returnedExpression = '0.0'
+        #    unary.returnedDiff = self.get_zero_derivatives()
         #else:
         returnedExpression, returnedDiff = arg1.visit(self)
-        self.returnedExpression = f'({op} {returnedExpression})'
+        unary.returnedExpression = f'({op} {returnedExpression})'
         for k, v in returnedDiff.items():
-            self.returnedDiff[k] = f'({op} {v})'
+            unary.returnedDiff[k] = f'({op} {v})'
 
-        return self.returnedExpression, self.returnedDiff
+        return unary.returnedExpression, unary.returnedDiff
 
+    def visit_mapply_binary(self, binary):
+        ops = {
+            'addp' : '+',
+            'addm' : '-',
+            'multtime' : '*',
+            'multdiv' : '/',
+        }
 
-#<!-- binary operators -->
-#<admst:template match="xyceAnalogFunctions:mapply_binary">
-#  <!-- process arguments and get their derivatives -->
-#  <admst:apply-templates select="arg1" match="xyceAnalogFunctions:processTerm">
-#    <admst:value-of select="returned('returnedExpression')/value"/>
-#    <admst:variable name="a1" select="%s"/>
-#    <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#      <admst:value-of select="name"/>
-#      <admst:value-of select="returned('d_exp_d_%s')/value"/>
-#      <admst:value-of select="name"/>
-#      <admst:variable name="d_a1_d_%s" select="%s"/>
-#    </admst:for-each>
-#  </admst:apply-templates>
-#  <admst:apply-templates select="arg2" match="xyceAnalogFunctions:processTerm">
-#    <admst:value-of select="returned('returnedExpression')/value"/>
-#    <admst:variable name="a2" select="%s"/>
-#    <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#      <admst:value-of select="name"/>
-#      <admst:value-of select="returned('d_exp_d_%s')/value"/>
-#      <admst:value-of select="name"/>
-#      <admst:variable name="d_a2_d_%s" select="%s"/>
-#    </admst:for-each>
-#  </admst:apply-templates>
-#  <admst:choose>
-#    <!-- addition -->
-#    <admst:when test="[name='addp']">
-#      <admst:choose>
-#        <admst:when test="[(arg1/math/value=0.0)and(arg2/math/value=0.0)]">
-#          <admst:variable name="expression" select="0.0"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="d_exp_d_%s" value="0.0"/>
-#          </admst:for-each>
-#        </admst:when>
-#        <admst:when test="[arg1/math/value=0.0]">
-#          <admst:variable name="expression" select="(+%($a2))"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a2Deriv" select="$(d_a2_d_%s)"/>
-#            <admst:choose>
-#              <admst:when test="[$a2Deriv = '0.0']">
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="0.0"/>
-#              </admst:when>
-#              <admst:otherwise>
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="(+%($a2Deriv))"/>
-#              </admst:otherwise>
-#            </admst:choose>
-#          </admst:for-each>
-#        </admst:when>
-#        <admst:when test="[arg2/math/value=0.0]">
-#          <admst:variable name="expression" select="(%($a1))"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a1Deriv" select="$(d_a1_d_%s)"/>
-#            <admst:choose>
-#              <admst:when test="[$a1Deriv = '0.0']">
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="0.0"/>
-#              </admst:when>
-#              <admst:otherwise>
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="(%($a1Deriv))"/>
-#              </admst:otherwise>
-#            </admst:choose>
-#          </admst:for-each>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:variable name="expression" select="($a1+$a2)"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a1Deriv" select="$(d_a1_d_%s)"/>
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a2Deriv" select="$(d_a2_d_%s)"/>
-#            <admst:choose>
-#              <admst:when test="[$a1Deriv = '0.0' and $a2Deriv ='0.0']">
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="0.0"/>
-#              </admst:when>
-#              <admst:when test="[$a1Deriv = '0.0']">
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="$a2Deriv"/>
-#              </admst:when>
-#              <admst:when test="[$a2Deriv = '0.0']">
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="$a1Deriv"/>
-#              </admst:when>
-#              <admst:otherwise>
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="($a1Deriv+$a2Deriv)"/>
-#              </admst:otherwise>
-#            </admst:choose>
-#          </admst:for-each>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
-#
-#    <!-- subtraction -->
-#    <admst:when test="[name='addm']">
-#      <admst:choose>
-#        <admst:when test="[(arg1/math/value=0.0)and(arg2/math/value=0.0)]">
-#          <admst:variable name="expression" select="0.0"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="d_exp_d_%s" value="0.0"/>
-#          </admst:for-each>
-#        </admst:when>
-#        <admst:when test="[arg1/math/value=0.0]">
-#          <admst:variable name="expression" select="(-%($a2))"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a2Deriv" select="$(d_a2_d_%s)"/>
-#            <admst:choose>
-#              <admst:when test="[$a2Deriv = '0.0']">
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="0.0"/>
-#              </admst:when>
-#              <admst:otherwise>
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="(-%($a2Deriv))"/>
-#              </admst:otherwise>
-#            </admst:choose>
-#          </admst:for-each>
-#        </admst:when>
-#        <admst:when test="[arg2/math/value=0.0]">
-#          <admst:variable name="expression" select="(%($a1))"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a1Deriv" select="$(d_a1_d_%s)"/>
-#            <admst:choose>
-#              <admst:when test="[$a1Deriv = '0.0']">
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" value="0.0"/>
-#              </admst:when>
-#              <admst:otherwise>
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="(%($a1Deriv))"/>
-#              </admst:otherwise>
-#            </admst:choose>
-#          </admst:for-each>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:variable name="expression" select="($a1-$a2)"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a1Deriv" select="$(d_a1_d_%s)"/>
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a2Deriv" select="$(d_a2_d_%s)"/>
-#            <admst:choose>
-#              <admst:when test="[$a1Deriv = '0.0' and $a2Deriv ='0.0']">
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" value="0.0"/>
-#              </admst:when>
-#              <admst:when test="[$a1Deriv = '0.0']">
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="(-$a2Deriv)"/>
-#              </admst:when>
-#              <admst:when test="[$a2Deriv = '0.0']">
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="$a1Deriv"/>
-#              </admst:when>
-#              <admst:otherwise>
-#                <admst:value-of select="name"/>
-#                <admst:variable name="d_exp_d_%s" select="($a1Deriv-$a2Deriv)"/>
-#              </admst:otherwise>
-#            </admst:choose>
-#          </admst:for-each>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
-#
-#    <!-- multiplication -->
-#    <admst:when test="[name='multtime']">
-#      <admst:choose>
-#        <admst:when test="[(arg1/math/value=0.0)or(arg2/math/value=0.0)]">
-#          <admst:variable name="expression" select="0.0"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="d_exp_d_%s" value="0.0"/>
-#          </admst:for-each>
-#        </admst:when>
-#        <admst:when test="[(arg1/math/value=1.0)and(arg2/math/value=1.0)]">
-#          <admst:variable name="expression" select="1.0"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="d_exp_d_%s" value="0.0"/>
-#          </admst:for-each>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:variable name="expression" select="($a1*$a2)"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a1Deriv" select="$(d_a1_d_%s)"/>
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a2Deriv" select="$(d_a2_d_%s)"/>
-#            <admst:choose>
-#              <admst:when test="[$a1Deriv = '0.0' and $a2Deriv = '0.0']">
-#                <admst:variable name="expressionDeriv" select="0.0"/>
-#              </admst:when>
-#              <admst:when test="[$a1Deriv = '0.0' and $a2Deriv = '1.0']">
-#                <admst:variable name="expressionDeriv" select="($a1)"/>
-#              </admst:when>
-#              <admst:when test="[$a1Deriv = '1.0' and $a2Deriv = '0.0']">
-#                <admst:variable name="expressionDeriv" select="($a2)"/>
-#              </admst:when>
-#              <admst:when test="[$a1Deriv = '1.0' and $a2Deriv = '1.0']">
-#                <admst:variable name="expressionDeriv" select="($a1+$a2)"/>
-#              </admst:when>
-#              <admst:when test="[$a1Deriv = '0.0']">
-#                <admst:variable name="expressionDeriv" select="($a1*$a2Deriv)"/>
-#              </admst:when>
-#              <admst:when test="[$a2Deriv = '0.0']">
-#                <admst:variable name="expressionDeriv" select="($a1Deriv*$a2)"/>
-#              </admst:when>
-#              <admst:when test="[$a1Deriv = '1.0']">
-#                <admst:variable name="expressionDeriv" select="($a1*$a2Deriv+$a2)"/>
-#              </admst:when>
-#              <admst:when test="[$a2Deriv = '1.0']">
-#                <admst:variable name="expressionDeriv" select="($a1+$a2*$a1Deriv)"/>
-#              </admst:when>
-#              <admst:when test="[$a1 = '1.0']">
-#                <admst:variable name="expressionDeriv" select="($a2Deriv)"/>
-#              </admst:when>
-#              <admst:when test="[$a2 = '1.0']">
-#                <admst:variable name="expressionDeriv" select="($a1Deriv)"/>
-#              </admst:when>
-#              <admst:otherwise>
-#                <admst:variable name="expressionDeriv" select="(($a1*$a2Deriv)+($a1Deriv*$a2))"/>
-#              </admst:otherwise>
-#            </admst:choose>
-#            <admst:value-of select="name"/>
-#            <admst:variable name="d_exp_d_%s" select="$expressionDeriv"/>
-#          </admst:for-each>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
-#    <admst:when test="[name='multdiv']">
-#      <admst:choose>
-#        <admst:when test="[arg1/math/value=0.0]">
-#          <admst:variable name="expression" select="0.0"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="d_exp_d_%s" value="0.0"/>
-#          </admst:for-each>
-#        </admst:when>
-#        <admst:when test="[(arg1/math/value=1.0)and(arg2/math/value=1.0)]">
-#          <admst:variable name="expression" select="1.0"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="d_exp_d_%s" value="0.0"/>
-#          </admst:for-each>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:variable name="expression" select="($a1/$a2)"/>
-#          <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a1Deriv" select="$(d_a1_d_%s)"/>
-#            <admst:value-of select="name"/>
-#            <admst:variable name="a2Deriv" select="$(d_a2_d_%s)"/>
-#            <admst:choose>
-#              <admst:when test="[$a1Deriv='0.0' and $a2Deriv='0.0']">
-#                <admst:variable name="expressionDeriv" select="0.0"/>
-#              </admst:when>
-#              <admst:when test="[$a1 = '1.0']">
-#                <admst:choose>
-#                  <admst:when test="[$a2Deriv = '1.0']">
-#                    <admst:variable name="expressionDeriv" select="(-1.0/$a2/$a2)"/>
-#                  </admst:when>
-#                  <admst:otherwise>
-#                    <admst:variable name="expressionDeriv" select="(-$a2Deriv/$a2/$a2)"/>
-#                  </admst:otherwise>
-#                </admst:choose>
-#              </admst:when>
-#              <admst:when test="[$a1Deriv = '0.0']">
-#                <admst:choose>
-#                  <admst:when test="[$a2Deriv = '1.0']">
-#                    <admst:variable name="expressionDeriv" select="(-$a1/$a2/$a2)"/>
-#                  </admst:when>
-#                  <admst:otherwise>
-#                    <admst:variable name="expressionDeriv" select="(-$a1*$a2Deriv/$a2/$a2)"/>
-#                  </admst:otherwise>
-#                </admst:choose>
-#              </admst:when>
-#              <admst:when test="[$a1Deriv = '1.0']">
-#                <admst:choose>
-#                  <admst:when test="[$a2Deriv = '0.0']">
-#                    <admst:variable name="expressionDeriv" select="(1.0/$a2)"/>
-#                  </admst:when>
-#                  <admst:when test="[$a2Deriv = '1.0']">
-#                    <admst:variable name="expressionDeriv" select="(($a2-$a1)/$a2/$a2)"/>
-#                  </admst:when>
-#                  <admst:otherwise>
-#                    <admst:variable name="expressionDeriv" select="(($a2-($a1*$a2Deriv))/$a2/$a2)"/>
-#                  </admst:otherwise>
-#                </admst:choose>
-#              </admst:when>
-#              <admst:otherwise>
-#                <admst:choose>
-#                  <admst:when test="[$a2 = '1.0']">
-#                    <admst:variable name="expressionDeriv" select="$a1Deriv"/>
-#                  </admst:when>
-#                  <admst:when test="[$a2Deriv = '0.0']">
-#                    <admst:variable name="expressionDeriv" select="($a1Deriv/$a2)"/>
-#                  </admst:when>
-#                  <admst:when test="[$a2Deriv = '1.0']">
-#                    <admst:variable name="expressionDeriv" select="(($a2*$a1Deriv-$a1)/$a2/$a2)"/>
-#                  </admst:when>
-#                  <admst:otherwise>
-#                    <admst:variable name="expressionDeriv" select="(($a2*$a1Deriv-$a1*$a2Deriv)/$a2/$a2)"/>
-#                  </admst:otherwise>
-#                </admst:choose>
-#              </admst:otherwise>
-#            </admst:choose>
-#            <admst:value-of select="name"/>
-#            <admst:variable name="d_exp_d_%s" select="$expressionDeriv"/>
-#          </admst:for-each>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
-#    <admst:otherwise>
-#      <admst:variable name="expression" select="($a1%(bname(.)/[name='bname']/value)$a2)"/>
-#      <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#        <admst:value-of select="name"/>
-#        <admst:variable name="d_exp_d_%s" value="0.0"/>
-#      </admst:for-each>
-#    </admst:otherwise>
-#  </admst:choose>
-#
-#  <admst:return name="returnedExpression" value="$expression"/>
-#  <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#    <admst:value-of select="name"/>
-#    <admst:value-of select="name"/>
-#    <admst:return name="d_exp_d_%s" value="$(d_exp_d_%s)"/>
-#  </admst:for-each>
-#
-#</admst:template>
+        args = list(binary.args.get_list())
+
+        for arg in args:
+            arg.visit(self)
+
+        op = ops[binary.name]
+
+        self.returnedExpression = f'({args[0].returnedExpression} {op} {args[1].returnedExpression})'
+
+        if binary.name in ('addp', 'addm',):
+            for v in self.get_derivative_variables():
+                n = self.get_expression_derivative_name(v.name)
+                d = [x.returnedDiff[n] for x in args]
+                binary.returnedDiff[n] = f'({d[0]} {op} {d[1]})'
+        elif binary.name in ('multtime', 'multdiv',):
+            a = [x.returnedExpression for x in args]
+            for v in self.get_derivative_variables():
+                n = self.get_expression_derivative_name(v.name)
+                d = [x.returnedDiff[n] for x in args]
+                if binary.name == 'multtime':
+                    binary.returnedDiff[n] = f'(({d[0]} * {a[1]}) + ({d[1]} * {a[0]}))'
+                elif binary.name == 'multdiv':
+                    binary.returnedDiff[n] = f'(({d[0]} / {a[1]}) + ({d[1]} * {a[0]}/({a[1]}*{a[1]})))'
+                else:
+                    raise RuntimeError("bug")
+        else:
+            raise RuntimeError(f"Unexpected mapply_binary {binary.name}")
+
 #
 #<!-- Ternary operator (condition)?iftrue:iffalse -->
 #
