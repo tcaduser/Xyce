@@ -90,6 +90,7 @@ from . import xyce_implicit
 class af:
     def __init__(self):
         self.globalAnalogFunction = None
+        self.doingAnalogFunctionCall = False
 
     def get_derivative_variables(self):
         for v in self.globalAnalogFunction.variable.get_list():
@@ -195,7 +196,9 @@ class af:
             }
             binary.returnedDiff[n] = opexp % sdict
 
-  def visit_mapply_ternary(self, ternary):
+        return binary.returnedExpression, binary.returnedDiff
+
+    def visit_mapply_ternary(self, ternary):
         args = list(ternary.args.get_list())
 
         for arg in args:
@@ -217,15 +220,21 @@ class af:
             }
             ternary.returnedDiff[n] = '(%(a0)s ? %(d1)s : %(d2)s)' % sdict
 
+        return ternary.returnedExpression, ternary.returnedDiff
+
+    def visit_function(self, function):
+        self.doingAnalogFunctionCall = False
+        fname = self.funcname(function)
+
+        args = list(ternary.args.get_list())
+
+        for arg in args:
+            arg.visit(self)
+
+        if function.name == 'hypot' and len(args) != 2:
+            raise RuntimeError("hypot function must take exactly two arguments.")
+
 #<!-- Function call -->
-#<admst:template match="xyceAnalogFunctions:function">
-#  <admst:variable name="doingAnalogFunctionCall" value="no"/>
-#  <admst:variable name="funcname" select="%(xyceAnalogFunctions:funcname(.)/[name='fname']/value)"/>
-#  <admst:variable name="args" select=""/>
-#  <admst:variable name="thisFunctionCall" path="."/>
-#  <admst:if test="[$funcname='hypot']">
-#    <admst:assert test="arguments[count(.)=2]" format="hypot function must take exactly two arguments.\n"/>
-#  </admst:if>
 #  <admst:for-each select="arguments">
 #    <admst:if test="[not($args='')]">
 #      <admst:variable name="args" select="$args,"/>
