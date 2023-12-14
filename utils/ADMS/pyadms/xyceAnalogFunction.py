@@ -231,32 +231,18 @@ class af:
         for arg in args:
             arg.visit(self)
 
+        aexp = [a.returnedExpression for a in args]
+
         if function.name == 'hypot' and len(args) != 2:
             raise RuntimeError("hypot function must take exactly two arguments.")
-
-#<!-- Function call -->
-#  <admst:for-each select="arguments">
-#    <admst:if test="[not($args='')]">
-#      <admst:variable name="args" select="$args,"/>
-#    </admst:if>
-#    <admst:value-of select="index(../arguments,.)"/>
-#    <admst:variable name="index" select="%s"/>
-#
-#    <admst:apply-templates select="." match="xyceAnalogFunctions:processTerm">
-#      <admst:variable name="arg$(index)" select="%(returned('returnedExpression')/value)"/>
-#      <admst:for-each select="$globalAnalogFunction/variable[input='yes']">
-#        <admst:value-of select="name"/>
-#        <admst:value-of select="returned('d_exp_d_%s')/value"/>
-#        <admst:value-of select="name"/>
-#        <admst:variable name="d_arg$(index)_d_%s" select="%s"/>
-#      </admst:for-each>
-#      <admst:choose>
-#        <admst:when test="[../name='min' or ../name='max']">
+        elif function.name in ('min', 'max'):
 #          <!-- this is ridiculously over-conservative, and may be better done
 #               by calling xyceAnalogFunctions:realArgument, but right now
 #               I'm just going with the over-conservative -->
-#          <admst:variable name="args" select="$args static_cast&lt;double&gt;($(arg$index))"/>
-#        </admst:when>
+            aexp = ['static_cast<double>({})' % a for a in aexp]
+
+
+#      <admst:choose>
 #        <admst:when test="[(../definition/datatypename='analogfunction') and ((datatypename='number') or (datatypename='variable' and type='integer'))]">
 #          <admst:variable name="argtype" select="huh?" />
 #          <admst:for-each select="../definition/variable[input='yes' or (output='yes' and name !=$thisFunctionCall/name)]">
@@ -266,7 +252,7 @@ class af:
 #          </admst:for-each>
 #          <admst:choose>
 #            <admst:when test="[$argtype='real']">
-#              <admst:variable name="args" select="$args static_cast&lt;double&gt;($(arg$index))"/>
+#              <admst:variable name="args" select="$args static_cast<double>($(arg$index))"/>
 #            </admst:when>
 #            <admst:otherwise>
 #                <admst:variable name="args" select="$args$(arg$index)"/>
@@ -285,10 +271,10 @@ class af:
 #       in the $d_arg#_d_name variables.  Form the actual function call
 #       and its derivatives.  Note:  "index" returns zero-based indices -->
 #  <admst:choose>
-#    <admst:when test="[$funcname='\$vt']">
+#    <admst:when test="[$funcname='$vt']">
 #      <admst:choose>
 #        <admst:when test="[$args='']">
-#          <admst:fatal format="Illegal to use \$vt with no argument in analog function\n"/>
+#          <admst:fatal format="Illegal to use $vt with no argument in analog function\n"/>
 #        </admst:when>
 #        <admst:otherwise>
 #          <admst:variable name="expression" value="adms_vt($args)"/>
@@ -310,7 +296,7 @@ class af:
 #       with respect to its arguments. These will be stored in d_f_d#, where
 #       # is the index (zero-based) of the argument -->
 #  <admst:choose>
-#    <admst:when test="[name='\$vt']">
+#    <admst:when test="[name='$vt']">
 #      <admst:variable name="d_f_d0" value="CONSTKoverQ"/>
 #    </admst:when>
 #    <admst:when test="[name='exp' or name='ln' or name='log' or name='sqrt' or name='abs' or name='limexp' or name='cos' or name='sin' or name='tan' or name='acos' or name='asin' or name='atan' or name='cosh' or name='sinh' or name='tanh' or name='acosh' or name='asinh' or name='atanh' or name='ceil' or name='floor']">
@@ -330,7 +316,7 @@ class af:
 #          <admst:variable name="d_f_d0" select="(0.5/sqrt(%($arg0)))"/>
 #        </admst:when>
 #        <admst:when test="[name='abs']">
-#          <admst:variable name="d_f_d0" select="(((%($arg0)&gt;=0)?(+1.0):(-1.0)))"/>
+#          <admst:variable name="d_f_d0" select="(((%($arg0)>=0)?(+1.0):(-1.0)))"/>
 #        </admst:when>
 #        <admst:when test="[name='cos']">
 #          <admst:variable name="d_f_d0" select="(-sin(%($arg0)))"/>
@@ -369,7 +355,7 @@ class af:
 #          <admst:variable name="d_f_d0" select="(1.0/(1.0-%($arg0)*%($arg0)))"/>
 #        </admst:when>
 #        <admst:when test="[name='limexp']">
-#          <admst:variable name="d_f_d0" select="(((%($arg0))&lt;80)?(limexp(%($arg0))):exp(80.0))"/>
+#          <admst:variable name="d_f_d0" select="(((%($arg0))<80)?(limexp(%($arg0))):exp(80.0))"/>
 #        </admst:when>
 #        <admst:when  test="[name='ceil' or name='floor']">
 #          <admst:variable name="d_f_d0" select="0.0"/>
@@ -388,12 +374,12 @@ class af:
 #          <admst:variable name="d_f_d1" select="((%($arg0)==0.0)?0.0:(log(%($arg0)*pow(%($arg0),%($arg1)))))"/>
 #        </admst:when>
 #        <admst:when test="[name='min']">
-#          <admst:variable name="d_f_d0" select="((%($arg0)&lt;=%($arg1))?1.0:0.0)"/>
-#          <admst:variable name="d_f_d1" select="((%($arg0)&lt;=%($arg1))?0.0:1.0)"/>
+#          <admst:variable name="d_f_d0" select="((%($arg0)<=%($arg1))?1.0:0.0)"/>
+#          <admst:variable name="d_f_d1" select="((%($arg0)<=%($arg1))?0.0:1.0)"/>
 #        </admst:when>
 #        <admst:when test="[name='max']">
-#          <admst:variable name="d_f_d0" select="((%($arg0)&gt;=%($arg1))?1.0:0.0)"/>
-#          <admst:variable name="d_f_d1" select="((%($arg0)&gt;=%($arg1))?0.0:1.0)"/>
+#          <admst:variable name="d_f_d0" select="((%($arg0)>=%($arg1))?1.0:0.0)"/>
+#          <admst:variable name="d_f_d1" select="((%($arg0)>=%($arg1))?0.0:1.0)"/>
 #        </admst:when>
 #        <admst:when test="[name='hypot']">
 #          <admst:variable name="d_f_d0" select="(%($arg0)/sqrt(%($arg0)*%($arg0)+%($arg1)*%($arg1)))"/>
@@ -497,7 +483,7 @@ class af:
 #<admst:template match="xyceAnalogFunctions:realArgument">
 #  <admst:choose>
 #    <admst:when test="[datatypename='number' or (datatypename='variable' and type='integer')]">
-#        <admst:variable name="localArg" select="static_cast&lt;double&gt;(%(xyceAnalogFunctions:processTerm(.)/[name='returnedExpression']/value))" />
+#        <admst:variable name="localArg" select="static_cast<double>(%(xyceAnalogFunctions:processTerm(.)/[name='returnedExpression']/value))" />
 #      </admst:when>
 #      <admst:otherwise>
 #        <admst:variable name="localArg" select="%(xyceAnalogFunctions:processTerm(.)/[name='returnedExpression']/value)" />
@@ -521,11 +507,11 @@ class af:
 #    <admst:when test="[name='abs']">
 #      <admst:variable name="expression" select="fabs"/>
 #    </admst:when>
-#    <admst:when test="[name='\$shrinkl']">
-#      <admst:fatal format="\$shrinkl not supported in Xyce"/>
+#    <admst:when test="[name='$shrinkl']">
+#      <admst:fatal format="$shrinkl not supported in Xyce"/>
 #    </admst:when>
-#    <admst:when test="[name='\$shrinka']">
-#      <admst:fatal format="\$shrinka not supported in Xyce"/>
+#    <admst:when test="[name='$shrinka']">
+#      <admst:fatal format="$shrinka not supported in Xyce"/>
 #    </admst:when>
 #    <admst:when test="[name='log']">
 #      <admst:variable name="expression" select="(1.0/log(10.0))*log"/>
@@ -536,7 +522,7 @@ class af:
 #    <admst:when test="[name='limexp']">
 #      <admst:variable name="expression" select="limexp"/>
 #    </admst:when>
-#    <admst:when test="[name='\$limexp']">
+#    <admst:when test="[name='$limexp']">
 #      <admst:variable name="expression" select="limexp"/>
 #    </admst:when>
 #    <admst:otherwise>
