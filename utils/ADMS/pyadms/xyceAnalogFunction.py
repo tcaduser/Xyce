@@ -267,75 +267,38 @@ class af:
 #       with respect to its arguments. These will be stored in d_f_d#, where
 #       # is the index (zero-based) of the argument -->
 
-#  <admst:choose>
-#    <admst:when test="[name='$vt']">
+
 #      <admst:variable name="d_f_d0" value="CONSTKoverQ"/>
-#    </admst:when>
-#    <admst:when test="[name='exp' or name='ln' or name='log' or name='sqrt' or name='abs' or name='limexp' or name='cos' or name='sin' or name='tan' or name='acos' or name='asin' or name='atan' or name='cosh' or name='sinh' or name='tanh' or name='acosh' or name='asinh' or name='atanh' or name='ceil' or name='floor']">
-#      <!-- functions of one argument, set "d_f_d0" to the expression for
-#           the derivative of f(x)/dx where x is the argument -->
-#      <admst:choose>
-#        <admst:when test="[name='exp']">
-#          <admst:variable name="d_f_d0" select="exp(%($arg0))"/>
-#        </admst:when>
-#        <admst:when test="[name='ln']">
-#          <admst:variable name="d_f_d0" select="(1.0/%($arg0))"/>
-#        </admst:when>
-#        <admst:when test="[name='log']">
-#          <admst:variable name="d_f_d0" select="(1.0/(log(10.0)*%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='sqrt']">
-#          <admst:variable name="d_f_d0" select="(0.5/sqrt(%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='abs']">
-#          <admst:variable name="d_f_d0" select="(((%($arg0)>=0)?(+1.0):(-1.0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='cos']">
-#          <admst:variable name="d_f_d0" select="(-sin(%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='sin']">
-#          <admst:variable name="d_f_d0" select="(cos(%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='tan']">
-#          <admst:variable name="d_f_d0" select="(1.0/cos(%($arg0))/cos(%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='acos']">
-#          <admst:variable name="d_f_d0" select="(-1.0/sqrt(1.0-%($arg0)*%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='asin']">
-#          <admst:variable name="d_f_d0" select="(+1.0/sqrt(1.0-%($arg0)*%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='atan']">
-#          <admst:variable name="d_f_d0" select="(+1.0/sqrt(1.0+%($arg0)*%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='cosh']">
-#          <admst:variable name="d_f_d0" select="(sinh(%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='sinh']">
-#          <admst:variable name="d_f_d0" select="(cosh(%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='tanh']">
-#          <admst:variable name="d_f_d0" select="(1.0/cosh(%($arg0))/cosh(%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='acosh']">
-#          <admst:variable name="d_f_d0" select="(1.0/(sqrt(%($arg0)-1)*sqrt(%($arg0)+1)))"/>
-#        </admst:when>
-#        <admst:when test="[name='asinh']">
-#          <admst:variable name="d_f_d0" select="(1.0/(sqrt(%($arg0)*%($arg0)+1.0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='atanh']">
-#          <admst:variable name="d_f_d0" select="(1.0/(1.0-%($arg0)*%($arg0)))"/>
-#        </admst:when>
-#        <admst:when test="[name='limexp']">
-#          <admst:variable name="d_f_d0" select="(((%($arg0))<80)?(limexp(%($arg0))):exp(80.0))"/>
-#        </admst:when>
-#        <admst:when  test="[name='ceil' or name='floor']">
-#          <admst:variable name="d_f_d0" select="0.0"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:variable name="d_f_d0" select="0.0"/>
-#          <admst:warning format="function derivative for %(name) not implemented yet!\n"/>
-#        </admst:otherwise>
+        functions = {
+            # single sargument
+            '$vt' : 'CONSTKoverQ',
+            'exp' : "exp({0})",
+            'ln' : "(1.0/{0})",
+            'log' : "(1.0/(log(10.0)*{0}))",
+            'sqrt' : "(0.5/sqrt({0}))",
+            'abs' : "((({0}>=0)?(+1.0):(-1.0)))",
+            'cos' : "(-sin({0}))",
+            'sin' : "(cos({0}))",
+            'tan' : "(1.0/cos({0})/cos({0}))",
+            'acos' : "(-1.0/sqrt(1.0-{0}*{0}))",
+            'asin' : "(+1.0/sqrt(1.0-{0}*{0}))",
+            'atan' : "(+1.0/sqrt(1.0+{0}*{0}))",
+            'cosh' : "(sinh({0}))",
+            'sinh' : "(cosh({0}))",
+            'tanh' : "(1.0/cosh({0})/cosh({0}))",
+            'acosh' : "(1.0/(sqrt({0}-1)*sqrt({0}+1)))",
+            'asinh' : "(1.0/(sqrt({0}*{0}+1.0)))",
+            'atanh' : "(1.0/(1.0-{0}*{0}))",
+            'limexp' : "((({0})<80)?(limexp({0})):exp(80.0))",
+            'ceil' : '0.0',
+            'floor' : '0.0',
+        }
+
+#       <admst:otherwise>
+#         <admst:variable name="d_f_d0" select="0.0"/>
+#         <admst:warning format="function derivative for %(name) not implemented yet!\n"/>
+#       </admst:otherwise>
+
 #      </admst:choose>
 #    </admst:when>
 #    <admst:when test="[name='pow' or name='min' or name='max' or name='hypot' or name='atan2']">
