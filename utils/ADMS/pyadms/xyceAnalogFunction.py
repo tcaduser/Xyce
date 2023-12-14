@@ -240,61 +240,33 @@ class af:
 #               by calling xyceAnalogFunctions:realArgument, but right now
 #               I'm just going with the over-conservative -->
             aexp = ['static_cast<double>({})' % a for a in aexp]
-
-
-#      <admst:choose>
-#        <admst:when test="[(../definition/datatypename='analogfunction') and ((datatypename='number') or (datatypename='variable' and type='integer'))]">
-#          <admst:variable name="argtype" select="huh?" />
-#          <admst:for-each select="../definition/variable[input='yes' or (output='yes' and name !=$thisFunctionCall/name)]">
-#            <admst:if test="[position(.)-1=$index]">
-#              <admst:variable name="argtype" select="%(type)"/>
-#            </admst:if>
-#          </admst:for-each>
-#          <admst:choose>
-#            <admst:when test="[$argtype='real']">
-#              <admst:variable name="args" select="$args static_cast<double>($(arg$index))"/>
-#            </admst:when>
-#            <admst:otherwise>
-#                <admst:variable name="args" select="$args$(arg$index)"/>
-#            </admst:otherwise>
-#          </admst:choose>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:variable name="args" select="$args$(arg$index)"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:apply-templates>
-#  </admst:for-each>
-#
+        elif function.definition.datatypename == 'analogfunction':
+            for i, arg in enumerate(args):
+                if arg.datatypename == 'variable' and arg.name != function.name:
+                    if arg.type == 'real':
+                        aexp[i] = 'static_cast<double>({})' % aexp[i]
+                elif arg.datatypename == 'number':
+                    aexp[i] = 'static_cast<double>({})' % aexp[i]
 #  <!-- We now have all our arguments collected up in "$args", each
 #       individual argument in $arg#, and each argument's derivatives
 #       in the $d_arg#_d_name variables.  Form the actual function call
 #       and its derivatives.  Note:  "index" returns zero-based indices -->
-#  <admst:choose>
-#    <admst:when test="[$funcname='$vt']">
-#      <admst:choose>
-#        <admst:when test="[$args='']">
-#          <admst:fatal format="Illegal to use $vt with no argument in analog function\n"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:variable name="expression" value="adms_vt($args)"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
+
+        if function.name == '$vt':
+            if len(args) != 1:
+                raise RuntimeError("Illegal to use $vt with no argument in analog function")
+            returnedExpression = 'admst_vt({})' % args[0].returnedExpression
 #    <!-- this special case doesn't follow the same pattern as other
 #         simple function calls.  We have also already handled misuse
 #         of the call above, so just assume we have two args here -->
-#    <admst:when test="[$funcname='hypot']">
-#      <admst:variable name="expression" select="sqrt(%($arg0)*%($arg0)+%($arg1)*%($arg1))"/>
-#    </admst:when>
-#    <admst:otherwise>
-#      <admst:variable name="expression" select="$funcname($args)"/>
-#    </admst:otherwise>
-#  </admst:choose>
-#
+        elif function.name == 'hypot':
+            returnedExpression = f"sqrt({aexp[0]}*{aexp[0]}+{aexp[1]}*{aexp[1]})"
+        else:
+            returnedExpression = '{}({})'.format(function.name, ', '.join(aexp))
 #  <!-- Now let us construct expressions for the derivative of the function
 #       with respect to its arguments. These will be stored in d_f_d#, where
 #       # is the index (zero-based) of the argument -->
+
 #  <admst:choose>
 #    <admst:when test="[name='$vt']">
 #      <admst:variable name="d_f_d0" value="CONSTKoverQ"/>
