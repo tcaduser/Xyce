@@ -269,7 +269,7 @@ class af:
 
 
 #      <admst:variable name="d_f_d0" value="CONSTKoverQ"/>
-        functions = {
+        single_arg_functions = {
             # single sargument
             '$vt' : 'CONSTKoverQ',
             'exp' : "exp({0})",
