@@ -114,18 +114,23 @@ class BasicData:
     def xycedQdXPtrName(self, jacobian):
         return f"q_{jacobian.row.name}_Equ_{jacobian.column.name}_Node_Ptr"
 
+
+    def printVariableDeclarationEnd(self, text):
+        if self.initializeOnDeclare:
+            text.write('=0.0')
+        text.write(';\n')
 #  <!--
 #   =================================================================-
 #    xyceDeclareVariable
 #    Given a variable, emit a C++ declaration for that variable
 #   =================================================================-
 #  -->
+    def xyceDeclareVariable(self, variable):
 #  <admst:template match="xyceDeclareVariable">
-#    <admst:assert test="adms[datatypename='variable' or datatypename='variableprototype']" format="xyceDeclareVariable expecting datatypename=variable or variableprototype, got %(adms/datatypename)"/>
-#    <admst:choose>
-#      <admst:when test="[type='real' and exists(probe) and not($globalCurrentScope='sensitivity')]">
-#        <admst:text format="double"/>
-#      </admst:when>
+        if not variable,datatypename in ('variable', 'variableprototype',):
+            raise RuntimeError(f"xyceDeclareVariable expecting datatypename=variable or variableprototype, got {variable.datatypename}"
+        if variable.type == 'real' and hasattr(variable, 'probe') and not self.globalCurrentScoree == 'sensitivity':
+            text = 'double'
 #      <!-- Bah.  Looks like "variable" dependency doesn't get propagated past
 #           one level.
 #
@@ -133,31 +138,21 @@ class BasicData:
 #           seems to have missed some.  So we have to make ALL reals in
 #           sensitivity be FADS
 #      -->
-#      <admst:when test="[type='real' and $globalCurrentScope='sensitivity' and exists(#Pdependent)]">
-#        <admst:text format="double"/>
-#      </admst:when>
-#      <admst:otherwise>
-#        <admst:apply-templates select="." match="verilog2CXXtype"/>
-#      </admst:otherwise>
-#    </admst:choose>
-#    <admst:text format=" %(name)"/>
-#    <admst:if test="[$initializeOnDeclare='yes']">
-#      <admst:text format="=0.0"/>
-#    </admst:if>
-#    <admst:text format=";\n"/>
-#    <admst:if test="[type='real' and $globalCurrentScope='sensitivity' and exists(#Pdependent)]">
-#        <admst:text format="double d_%(name)_dX=0.0;\n"/>
-#    </admst:if>
-#    <admst:if test="[type='real' and exists(probe) and not($globalCurrentScope='sensitivity') and (insource='yes' or not(nilled(ddxprobe)))]">
-#      <admst:variable name="myVar" path="."/>
-#      <admst:for-each select="probe">
-#        <admst:variable name="myprobe" path="."/>
-#        <admst:text format="    "/>
-#        <admst:text format=" double d_%($myVar/name)_d%(nature)_%(branch/pnode)_%(branch/nnode)"/>
-#        <admst:if test="[$initializeOnDeclare='yes']">
-#          <admst:text format="=0.0"/>
-#        </admst:if>
-#        <admst:text format=";\n"/>
+        elif variable.type='real' and self.globalCurrentScope=='sensitivity' and hasattr(variable, 'Pdependent':
+            text = 'double'
+        else:
+            text = self.verilog2CXXtype(variable)
+
+        text.write(f' f{variable.name}')
+        self.printVariableDeclarationEnd(text)
+
+        if variable.type='real' and self.globalCurrentScope=='sensitivity' and hasattr(variable, 'Pdependent':
+            text.write(f'double d_{variable.name}_dX=0.0;\n')
+        elif variable.type='real' and self.globalCurrentScope!='sensitivity' and (variable.insource or hasattr(variable, 'ddxprobe'):
+            for probe in variable.probe.get_list():
+                text.write(f"     double d_{variable.name}_d{variable.nature}_{variable.branch.pnode}_{variable.branch.nnode}"
+                self.printVariableDeclarationEnd(text)
+
 #        <admst:if test="[../insource='yes' and $doSecondDerivs='yes']">
 #          <!-- this looks fishy to me and presupposes that all ddxprobes are of form V(X,GND), 
 #               and never V(X,Y) but the former is pretty much what all ddx() usage is in the wild.  -->
