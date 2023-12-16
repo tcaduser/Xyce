@@ -101,9 +101,9 @@ class BasicData:
 #    used to identify its location
 #   =================================================================-
 #  -->
-#  <admst:template match="xycedFdXPtrName">
-#    <admst:text format="f_%(row/name)_Equ_%(column/name)_Node_Ptr"/>
-#  </admst:template>
+    def xycedFdXPtrName(self, jacobian):
+        return f"f_{jacobian.row/name}_Equ_{jacobian.column.name}_Node_Ptr"
+
 #  <!--
 #   =================================================================-
 #   xycedQdXPtrName
@@ -111,10 +111,9 @@ class BasicData:
 #    used to identify its location
 #   =================================================================-
 #  -->
-#  <admst:template match="xycedQdXPtrName">
-#    <admst:text format="q_%(row/name)_Equ_%(column/name)_Node_Ptr"/>
-#  </admst:template>
-#
+    def xycedQdXPtrName(self, jacobian):
+        return f"q_{jacobian.row.name}_Equ_{jacobian.column.name}_Node_Ptr"
+
 #  <!--
 #   =================================================================-
 #    xyceDeclareVariable
@@ -1312,11 +1311,11 @@ class BasicData:
 #      <admst:variable name="theEquationConstant" select="%(xyceNodeConstantName($theEquation)/[name='nodeConstant']/value)"/>
 #      <admst:for-each select="$theModule/jacobian[row/name='$theEquationName']">
 #        <admst:if test="[exists(row/#collapsible) and (row/@collapsesTo/name='GND')]">
-#          <admst:text format="if (!collapseNode_%(row/name))\n"/>
+#          <admst:text format="if (!collapseNode_{jacobian.row.name})\n"/>
 #          <admst:text format="{\n"/>
 #        </admst:if>
 #        <admst:if test="[not(column=row) and exists(column/#collapsible) and (column/@collapsesTo/name='GND')]">
-#          <admst:text format="if (!collapseNode_%(column/name))\n"/>
+#          <admst:text format="if (!collapseNode_{jacobian.column.name})\n"/>
 #          <admst:text format="{\n"/>
 #        </admst:if>
 #        <admst:text format="    jacLoc = pairToJacStampMap[IntPair(%(xyceNodeConstantName(row)/[name='nodeConstant']/value),%(xyceNodeConstantName(column)/[name='nodeConstant']/value))];\n"/>
@@ -1387,11 +1386,11 @@ class BasicData:
 #      <admst:variable name="theEquationConstant" select="%(xyceNodeConstantName($theEquation)/[name='nodeConstant']/value)"/>
 #      <admst:for-each select="$theModule/jacobian[row/name='$theEquationName']">
 #        <admst:if test="[exists(row/#collapsible) and (row/@collapsesTo/name='GND')]">
-#          <admst:text format="if (!collapseNode_%(row/name))\n"/>
+#          <admst:text format="if (!collapseNode_{jacobian.row.name})\n"/>
 #          <admst:text format="{\n"/>
 #        </admst:if>
 #        <admst:if test="[not(column=row) and exists(column/#collapsible) and (column/@collapsesTo/name='GND')]">
-#          <admst:text format="if (!collapseNode_%(column/name))\n"/>
+#          <admst:text format="if (!collapseNode_{jacobian.column.name})\n"/>
 #          <admst:text format="{\n"/>
 #        </admst:if>
 #        <admst:text format="    %(xycedFdXPtrName(.)) = &amp;(dFdx[%(xyceNodeLIDVariable(row))][%(xyceJacobianOffsetName(.))]);\n"/>
