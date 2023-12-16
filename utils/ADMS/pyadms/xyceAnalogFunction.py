@@ -299,38 +299,14 @@ class af:
 #         <admst:warning format="function derivative for %(name) not implemented yet!\n"/>
 #       </admst:otherwise>
 
-#      </admst:choose>
-#    </admst:when>
-#    <admst:when test="[name='pow' or name='min' or name='max' or name='hypot' or name='atan2']">
-#      <!-- two-argument functions -->
-#      <admst:choose>
-#        <admst:when test="[name='pow']">
-#          <admst:variable name="d_f_d0" select="((%($arg0)==0.0)?0.0:(pow(%($arg0),%($arg1))*%($arg1)/%($arg0)))"/>
-#          <admst:variable name="d_f_d1" select="((%($arg0)==0.0)?0.0:(log(%($arg0)*pow(%($arg0),%($arg1)))))"/>
-#        </admst:when>
-#        <admst:when test="[name='min']">
-#          <admst:variable name="d_f_d0" select="((%($arg0)<=%($arg1))?1.0:0.0)"/>
-#          <admst:variable name="d_f_d1" select="((%($arg0)<=%($arg1))?0.0:1.0)"/>
-#        </admst:when>
-#        <admst:when test="[name='max']">
-#          <admst:variable name="d_f_d0" select="((%($arg0)>=%($arg1))?1.0:0.0)"/>
-#          <admst:variable name="d_f_d1" select="((%($arg0)>=%($arg1))?0.0:1.0)"/>
-#        </admst:when>
-#        <admst:when test="[name='hypot']">
-#          <admst:variable name="d_f_d0" select="(%($arg0)/sqrt(%($arg0)*%($arg0)+%($arg1)*%($arg1)))"/>
-#          <admst:variable name="d_f_d1" select="(%($arg1)/sqrt(%($arg0)*%($arg0)+%($arg1)*%($arg1)))"/>
-#        </admst:when>
-#        <admst:when test="[name='atan2']">
-#          <admst:variable name="d_f_d0" select="%($arg1)/(%($arg0)*%($arg0)+%($arg1)*%($arg1))"/>
-#          <admst:variable name="d_f_d1" select="-%($arg0)/(%($arg0)*%($arg0)+%($arg1)*%($arg1))"/>
-#        </admst:when>
-#        <admst:otherwise>
-#          <admst:variable name="d_f_d0" select="0.0"/>
-#          <admst:variable name="d_f_d1" select="0.0"/>
-#          <admst:warning format="function derivative for %(name) not implemented yet!\n"/>
-#        </admst:otherwise>
-#      </admst:choose>
-#    </admst:when>
+        two_arg_functions = {
+            'pow' : ("(({0}==0.0)?0.0:(pow({0},{1})*{1}/{0}))", "(({0}==0.0)?0.0:(log({0}*pow({0},{1}))))",),
+            'min' : ("(({0}<={1})?1.0:0.0)", "(({0}<={1})?0.0:1.0)",),
+            'max' : ("(({0}>={1})?1.0:0.0)", "(({0}>={1})?0.0:1.0)",),
+            'hypot' : ("({0}/sqrt({0}*{0}+{1}*{1}))", "({1}/sqrt({0}*{0}+{1}*{1}))",),
+            'atan2' : ("{1}/({0}*{0}+{1}*{1})", "-{0}/({0}*{0}+{1}*{1})",),
+        }
+
 #    <admst:otherwise>
 #      <admst:if test="[class!='analog']">
 #        <admst:fatal format="Unable to handle function %(name) of class %(class) at this time.  Bye."/>
